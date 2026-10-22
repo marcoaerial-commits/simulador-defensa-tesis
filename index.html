@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comisión Examinadora</title>
+<meta name="description" content="Simulador de defensa de tesis: un profesor de la comisión hace preguntas sobre 'El uso de sociedades offshore y su impacto en la evasión tributaria en Chile'.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f1ea; --panel:#fffdf8; --ink:#1d2433; --muted:#6a7080; --line:#e2ddd1;
+  --accent:#1f3a5f; --accent-ink:#fff; --gold:#b8892b; --ok:#2f7a4b; --mid:#b07a12; --bad:#b03a2e;
+  --prof:#eef2f8; --me:#1f3a5f; --me-ink:#fff; --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 24px rgba(20,30,50,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11151d; --panel:#181d27; --ink:#e7e9ee; --muted:#9aa1b0; --line:#2a3140;
+    --accent:#8fb3e6; --accent-ink:#0e1420; --gold:#d9ad55; --ok:#5cc184; --mid:#e0a93a; --bad:#ef7d70;
+    --prof:#212838; --me:#2c4a74; --me-ink:#f1f4fa; --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11151d; --panel:#181d27; --ink:#e7e9ee; --muted:#9aa1b0; --line:#2a3140;
+  --accent:#8fb3e6; --accent-ink:#0e1420; --gold:#d9ad55; --ok:#5cc184; --mid:#e0a93a; --bad:#ef7d70;
+  --prof:#212838; --me:#2c4a74; --me-ink:#f1f4fa; --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,sans-serif;min-height:100vh}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:700;letter-spacing:-.01em;margin:0}
+button{font:inherit;cursor:pointer}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+header.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.seal{width:42px;height:42px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:Fraunces,serif;font-weight:700;font-size:18px;flex:none}
+header.top .t{flex:1;min-width:0}
+header.top h1{font-size:20px}
+header.top p{margin:0;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:7px 10px;font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:22px}
+.hero h2{font-size:28px;line-height:1.15;margin-bottom:8px}
+.hero .sub{color:var(--muted);margin:0 0 18px}
+.thesis{border-left:3px solid var(--gold);padding:6px 12px;margin:0 0 20px;font-family:Fraunces,serif;font-size:16px}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:18px 0 8px}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mode{border:1.5px solid var(--line);border-radius:12px;padding:12px;background:transparent;color:var(--ink);text-align:left}
+.mode b{display:block;font-size:14px}
+.mode span{font-size:12.5px;color:var(--muted)}
+.mode[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:transparent;color:var(--ink);font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.row label{display:flex;align-items:center;gap:6px;font-size:14px}
+select,input[type=text],input[type=password],textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:12px 20px;font-weight:600}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:10px 16px}
+.primary:disabled{opacity:.5;cursor:default}
+details.ia{margin-top:18px;border-top:1px dashed var(--line);padding-top:12px}
+details.ia summary{cursor:pointer;font-weight:600;font-size:14px}
+details.ia p{color:var(--muted);font-size:13px}
+.hidden{display:none!important}
+
+/* Examen */
+.exam{display:flex;flex-direction:column;height:calc(100vh - 110px);min-height:520px}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.progress{flex:1;min-width:140px;height:6px;background:var(--line);border-radius:4px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--gold);width:0;transition:width .4s}
+.timer{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px;padding:4px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line)}
+.timer.low{color:var(--bad);border-color:var(--bad)}
+.chat{flex:1;overflow-y:auto;padding:6px 2px 10px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:10px;max-width:92%}
+.msg .av{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:13px;font-weight:700;font-family:Fraunces,serif}
+.msg.prof .av{background:var(--accent);color:var(--accent-ink)}
+.msg .bubble{padding:11px 14px;border-radius:14px;background:var(--prof);border:1px solid var(--line)}
+.msg.prof .bubble{border-top-left-radius:4px}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.msg.me .av{background:var(--gold);color:#fff}
+.msg.me .bubble{background:var(--me);color:var(--me-ink);border-color:transparent;border-top-right-radius:4px;white-space:pre-wrap}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.q{font-family:Fraunces,serif;font-size:17px;line-height:1.4}
+.score{display:inline-flex;align-items:center;gap:8px;font-weight:700;margin-bottom:6px}
+.dot{width:10px;height:10px;border-radius:50%}
+.pts{list-style:none;padding:0;margin:6px 0}
+.pts li{padding:2px 0 2px 22px;position:relative;font-size:14px}
+.pts li::before{position:absolute;left:0;top:2px;font-weight:700}
+.pts li.y::before{content:"✓";color:var(--ok)}
+.pts li.n::before{content:"✗";color:var(--bad)}
+.model{margin-top:8px;font-size:14px}
+.model summary{cursor:pointer;color:var(--accent);font-weight:600}
+.model div{margin-top:6px;padding:10px 12px;border-left:3px solid var(--gold);background:var(--panel);border-radius:6px}
+.typing{color:var(--muted);font-style:italic;font-size:14px}
+.composer{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.composer textarea{border:0;background:transparent;resize:none;min-height:70px;outline:none;padding:4px}
+.composer .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.composer .acts .sp{flex:1}
+.mic{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:8px 12px}
+.mic.on{background:var(--bad);color:#fff;border-color:var(--bad)}
+.hint{font-size:12px;color:var(--muted)}
+
+/* Informe */
+.grade{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:10px 0 18px}
+.grade .big{font-family:Fraunces,serif;font-size:64px;font-weight:700;line-height:1}
+.grade .txt{color:var(--muted);max-width:420px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.meter{height:6px;background:var(--line);border-radius:4px;overflow:hidden;width:80px;margin-top:6px}
+.meter i{display:block;height:100%}
+.topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin:8px 0 18px}
+.topic{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px}
+.topic b{display:block;font-size:20px;font-family:Fraunces,serif}
+.foot{margin-top:24px;color:var(--muted);font-size:12px;text-align:center}
+@media (max-width:640px){
+  .modes{grid-template-columns:1fr}
+  .hero h2{font-size:23px}
+  .exam{height:calc(100vh - 96px)}
+  .msg{max-width:100%}
+  .grade .big{font-size:52px}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="seal">C</div>
+    <div class="t">
+      <h1>Comisión Examinadora</h1>
+      <p>Simulador de defensa · Sociedades offshore y evasión tributaria en Chile</p>
+    </div>
+    <button class="iconbtn" id="themeBtn" title="Cambiar tema">Tema</button>
+  </header>
+
+  <!-- INICIO -->
+  <section id="vInicio" class="card hero">
+    <h2>Buenos días, señorita Rodríguez. Cuando esté lista, comenzamos.</h2>
+    <p class="sub">Un profesor de la comisión le hará preguntas sobre su presentación, evaluará cada respuesta según los puntos clave que la comisión espera escuchar y, a veces, repreguntará.</p>
+    <p class="thesis">«El uso de sociedades offshore y su impacto en la evasión tributaria en Chile» — Fabiana Rodríguez Valdés</p>
+
+    <div class="label">Modalidad</div>
+    <div class="modes" id="modes">
+      <button class="mode" data-mode="defensa" aria-pressed="true"><b>Defensa simulada</b><span>8 preguntas al azar, con énfasis en las láminas 9, 10, 11 y 14</span></button>
+      <button class="mode" data-mode="lamina" aria-pressed="false"><b>Por lámina</b><span>Elige las diapositivas que quieres practicar</span></button>
+      <button class="mode" data-mode="todas" aria-pressed="false"><b>Banco completo</b><span>Todas las preguntas, en orden aleatorio</span></button>
+    </div>
+
+    <div id="slidePick" class="hidden">
+      <div class="label">Diapositivas</div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="label">Profesor</div>
+    <div class="row">
+      <label>Estilo
+        <select id="estilo">
+          <option value="amable">Amable</option>
+          <option value="neutral" selected>Formal</option>
+          <option value="exigente">Exigente</option>
+        </select>
+      </label>
+      <label>Tiempo por respuesta
+        <select id="tiempo">
+          <option value="0">Sin límite</option>
+          <option value="60">1 min</option>
+          <option value="90" selected>1 min 30 s</option>
+          <option value="120">2 min</option>
+          <option value="180">3 min</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="voz" checked> El profesor lee en voz alta</label>
+      <label><input type="checkbox" id="repreg" checked> Repreguntas</label>
+    </div>
+
+    <details class="ia">
+      <summary>Modo IA (opcional): el profesor evalúa con Claude</summary>
+      <p>Sin esto, la app funciona completa: evalúa comparando tu respuesta con los puntos clave de la pauta. Con una clave de la API de Anthropic, el profesor lee tu respuesta completa, la comenta como lo haría un académico y formula repreguntas propias. La clave se guarda solo en este navegador y se envía únicamente a api.anthropic.com.</p>
+      <div class="row">
+        <input type="password" id="apiKey" placeholder="sk-ant-..." style="flex:1;min-width:220px" autocomplete="off">
+        <input type="text" id="apiModel" value="claude-sonnet-5-5" style="width:180px" title="Modelo">
+      </div>
+    </details>
+
+    <div class="row" style="margin-top:22px">
+      <button class="primary" id="startBtn">Comenzar la defensa</button>
+      <span class="hint" id="countHint"></span>
+    </div>
+  </section>
+
+  <!-- EXAMEN -->
+  <section id="vExamen" class="exam hidden">
+    <div class="bar">
+      <span class="hint" id="qCount">Pregunta 1 de 8</span>
+      <div class="progress"><i id="prog"></i></div>
+      <span class="timer hidden" id="timer">1:30</span>
+      <button class="iconbtn" id="endBtn">Terminar</button>
+    </div>
+    <div class="chat" id="chat" aria-live="polite"></div>
+    <div class="composer" id="composer">
+      <textarea id="ans" placeholder="Responda como lo haría ante la comisión…"></textarea>
+      <div class="acts">
+        <button class="mic" id="micBtn" title="Responder hablando">🎤 Hablar</button>
+        <button class="ghost hide-sm" id="repeatBtn" title="Repetir la pregunta">↻ Repetir pregunta</button>
+        <span class="sp"></span>
+        <span class="hint hide-sm">Ctrl + Enter para enviar</span>
+        <button class="primary" id="sendBtn">Responder</button>
+      </div>
+    </div>
+    <div class="row hidden" id="nextRow" style="justify-content:flex-end;margin-top:10px">
+      <button class="primary" id="nextBtn">Siguiente pregunta →</button>
+    </div>
+  </section>
+
+  <!-- INFORME -->
+  <section id="vInforme" class="card hidden">
+    <h2>Acta de la comisión</h2>
+    <div class="grade">
+      <div class="big" id="nota">—</div>
+      <div class="txt" id="notaTxt"></div>
+    </div>
+    <div class="label">Desempeño por tema</div>
+    <div class="topics" id="topics"></div>
+    <div class="label">Detalle de preguntas</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Pregunta</th><th>Logro</th></tr></thead><tbody id="tbody"></tbody></table></div>
+    <div class="row" style="margin-top:20px">
+      <button class="primary" id="retryWeak">Practicar mis preguntas débiles</button>
+      <button class="ghost" id="copyBtn">Copiar informe</button>
+      <button class="ghost" id="homeBtn">Volver al inicio</button>
+    </div>
+  </section>
+
+  <p class="foot">La nota es una referencia de práctica (escala 1,0–7,0 con 60 % de exigencia) basada en los puntos clave de la pauta.</p>
+</div>
+
+<script>
+const TESIS = "DIAPOSITIVA 1\n\nPresentación\n\n\"Buenos días.\n\nMi nombre es Fabiana Rodríguez Valdés y presentaré mi trabajo de titulación denominado El uso de sociedades offshore y su impacto en la evasión tributaria en Chile.\n\nEl objetivo de esta investigación fue analizar qué son las sociedades offshore, cómo funcionan, de qué manera pueden generar riesgos tributarios y si el Servicio de Impuestos Internos dispone actualmente de herramientas suficientes para fiscalizar este tipo de estructuras.\"\n\nDIAPOSITIVA 2\n\nRuta de la presentación\n\n\"Para desarrollar esta investigación estructuré la exposición en seis partes.\n\nPrimero presentaré la pregunta de investigación.\n\nLuego explicaré qué son las sociedades offshore y cuáles son sus principales características.\n\nPosteriormente revisaré la diferencia entre planificación legítima, elusión y evasión.\n\nDespués analizaré las principales normas chilenas aplicables a estas estructuras.\n\nA continuación revisaré los mecanismos internacionales de control.\n\nY finalmente responderé la pregunta de investigación y presentaré las conclusiones.\"\n\nDIAPOSITIVA 3\n\nPregunta de investigación\n\n\"El problema principal que origina esta investigación se resume en la siguiente pregunta:\n\n¿Dispone el Servicio de Impuestos Internos, o SII, de las herramientas adecuadas para mitigar los efectos adversos de la evasión y elusión fiscal generadas por las sociedades offshore en el sistema tributario chileno, considerando los principios de equidad y sostenibilidad fiscal?\n\nEsta pregunta surge porque las estructuras offshore permiten operar entre distintas jurisdicciones, lo que puede dificultar la identificación del contribuyente, de las rentas obtenidas y de las obligaciones tributarias aplicables.\n\nPor lo tanto, el análisis se enfoca en evaluar tres aspectos:\n\nprimero, las normas existentes;\n\nsegundo, la información disponible para la autoridad tributaria;\n\ny tercero, la capacidad del SII para fiscalizar este tipo de estructuras.\"\n\nDIAPOSITIVA 4\n\nEnfoque metodológico\n\n\"Esta investigación tiene un enfoque documental, descriptivo y analítico.\n\nEs descriptiva porque explica el funcionamiento de las sociedades offshore.\n\nEs analítica porque compara estas estructuras con la normativa tributaria chilena y con los estándares internacionales.\n\nY es aplicada porque busca determinar si las herramientas existentes permiten enfrentar adecuadamente los riesgos tributarios asociados a estas estructuras.\n\nPara ello se revisó legislación nacional, normativa tributaria, documentación del Servicio de Impuestos Internos y estándares internacionales desarrollados principalmente por la OCDE.\"\n\nDIAPOSITIVA 5\n\n¿Qué es una sociedad offshore?\n\n\"Antes de analizar los riesgos tributarios es necesario entender qué es una sociedad offshore.\n\nUna sociedad offshore es una sociedad mercantil constituida en una jurisdicción distinta del país donde viven sus dueños o donde se desarrolla la actividad principal.\n\nPor ejemplo, un residente chileno puede constituir una sociedad en Panamá o en Islas Vírgenes Británicas para administrar determinadas inversiones internacionales.\n\nEstas sociedades suelen utilizarse para mantener activos, realizar inversiones, administrar cuentas bancarias o gestionar patrimonios.\n\nUn punto muy importante de esta investigación es que una sociedad offshore no es ilegal por definición.\n\nLa palabra offshore simplemente indica que la entidad se encuentra constituida fuera del país de residencia de sus propietarios.\n\nLa evaluación tributaria dependerá del uso específico que se haga de ella y del cumplimiento de las obligaciones legales correspondientes.\"\n\nDIAPOSITIVA 6\n\nCuatro características principales\n\n\"Las sociedades offshore normalmente presentan cuatro características principales.\n\nLa primera es la jurisdicción extranjera. Los propietarios residen en un país, pero la sociedad se constituye en otro.\n\nLa segunda es la inactividad local. Muchas veces la sociedad no desarrolla actividad económica relevante dentro de la jurisdicción donde fue creada. Puede contar únicamente con una dirección legal proporcionada por un agente residente.\n\nLa tercera es la tributación reducida. Estas jurisdicciones suelen ofrecer exenciones, tasas bajas o regímenes territoriales de tributación.\n\nY la cuarta característica es la privacidad corporativa. Históricamente estas jurisdicciones protegían la identidad de accionistas y beneficiarios finales.\n\nSin embargo, esta característica se ha reducido considerablemente debido a estándares internacionales de transparencia y al intercambio automático de información.\"\n\nDIAPOSITIVA 7\n\n¿Cómo funciona una offshore?\n\n\"Para entender mejor este concepto podemos observar un ejemplo simple.\n\nUna persona residente en Chile constituye una sociedad en una jurisdicción extranjera.\n\nEsa sociedad mantiene inversiones, acciones, propiedades o cuentas bancarias.\n\nPosteriormente genera rentas provenientes de esos activos.\n\nFinalmente esas rentas pueden ser distribuidas o eventualmente declaradas por el contribuyente chileno según la normativa correspondiente.\n\nLo importante es entender que la existencia de una sociedad offshore no implica automáticamente evasión.\n\nLa clave está en determinar si existe una finalidad económica real, si existe documentación suficiente y si las obligaciones tributarias son cumplidas correctamente.\"\n\nDIAPOSITIVA 8\n\nUso legítimo, elusión y evasión\n\n\"Uno de los aspectos más importantes de la investigación consiste en diferenciar tres conceptos.\n\nPrimero encontramos la planificación legítima.\n\nEsta ocurre cuando un contribuyente utiliza alternativas permitidas por la ley para organizar sus operaciones, manteniendo coherencia entre la forma jurídica y la realidad económica.\n\nLuego encontramos la elusión.\n\nLa elusión ocurre cuando se utilizan estructuras jurídicas para obtener ventajas tributarias que no reflejan el verdadero propósito económico de una operación.\n\nY finalmente encontramos la evasión.\n\nLa evasión implica incumplir directamente la ley tributaria mediante ocultamiento, subdeclaración o entrega de información falsa.\n\nPor lo tanto, una misma estructura offshore puede ser legítima, elusiva o evasiva dependiendo del uso que se le dé.\"\n\nDIAPOSITIVA 9\n\nNormativa chilena\n\n\"Respecto de la normativa chilena, existen diversas herramientas relevantes.\n\nLa primera es el principio de renta mundial.\n\nEsto significa que una persona domiciliada o residente en Chile debe declarar no solamente las rentas obtenidas dentro del país, sino también aquellas obtenidas en el extranjero.\n\nEn segundo lugar encontramos el artículo 41 G de la Ley sobre Impuesto a la Renta, también conocido como régimen CFC o de entidades controladas en el extranjero.\n\nEsta norma busca evitar que determinadas rentas pasivas permanezcan indefinidamente acumuladas fuera de Chile.\n\nTambién encontramos el artículo 41 H, que identifica regímenes fiscales preferenciales.\n\nAdemás existen normas de precios de transferencia que permiten controlar operaciones entre partes relacionadas.\n\nFinalmente encontramos el Impuesto Adicional para determinadas rentas pagadas desde Chile hacia el exterior.\n\nEn conjunto, estas normas buscan determinar dónde se genera la renta, quién tiene el control de ella y cuál debe ser su tratamiento tributario.\"\n\nDIAPOSITIVA 10\n\nNGAE y Ley 21.713\n\n\"Además de las normas anteriores, existen mecanismos específicos destinados a fortalecer la fiscalización.\n\nUno de ellos es la Norma General Antielusión.\n\nEsta norma permite al SII revisar operaciones cuando existe sospecha de abuso de formas jurídicas o simulación.\n\nSin embargo, es importante recordar que la existencia de una ventaja tributaria no implica necesariamente elusión.\n\nSiempre debe analizarse la realidad económica de cada caso.\n\nPor otra parte, la Ley 21.713 fortaleció diversas facultades de fiscalización y control.\n\nEstas medidas mejoran la capacidad de obtener información, coordinar organismos y enfrentar operaciones más complejas.\n\nEn consecuencia, Chile ha avanzado significativamente en materia de transparencia y fiscalización tributaria.\"\n\nDIAPOSITIVA 11\n\nMarco internacional\n\n\"Debido a que las sociedades offshore operan entre distintos países, la cooperación internacional resulta fundamental.\n\nUna de las herramientas más relevantes es el CRS, que corresponde al intercambio automático de información financiera entre jurisdicciones participantes.\n\nGracias a este mecanismo, Chile puede recibir información sobre determinadas cuentas financieras mantenidas por residentes chilenos en el extranjero.\n\nTambién destaca el proyecto BEPS desarrollado por la OCDE.\n\nSu objetivo principal es evitar que las utilidades sean trasladadas artificialmente hacia territorios de baja tributación.\n\nFinalmente, los convenios tributarios permiten intercambiar información y coordinar actuaciones entre distintas administraciones tributarias.\n\nEstas herramientas han reducido considerablemente el nivel de opacidad que tradicionalmente caracterizaba a muchas jurisdicciones offshore.\"\n\nDIAPOSITIVA 12\n\nHerramientas del SII\n\n\"Al analizar todas estas normas podemos observar que el SII no depende de una sola herramienta.\n\nSu capacidad de fiscalización proviene de la combinación de distintos mecanismos.\n\nObtiene información mediante declaraciones juradas e intercambios internacionales.\n\nAplica normas como renta mundial, artículo 41 G, artículo 41 H y la Norma General Antielusión.\n\nUtiliza precios de transferencia para revisar operaciones entre relacionados.\n\nAdemás coordina acciones con otros organismos nacionales e internacionales.\n\nPor lo tanto, la fortaleza del sistema se encuentra precisamente en la combinación de información, normativa y capacidad técnica.\"\n\nDIAPOSITIVA 13\n\nDificultades actuales\n\n\"Sin perjuicio de los avances señalados, continúan existiendo desafíos importantes.\n\nAlgunas estructuras offshore utilizan múltiples capas societarias, trusts o fundaciones que dificultan determinar quién es el verdadero controlador.\n\nAdemás, no todas las jurisdicciones entregan información con la misma oportunidad o nivel de detalle.\n\nTambién resulta necesario distinguir si existe actividad económica real o si la entidad es simplemente instrumental.\n\nPor último, estas fiscalizaciones requieren conocimientos tributarios, financieros, jurídicos e incluso tecnológicos altamente especializados.\n\nPor ello, la eficacia de las herramientas existentes sigue dependiendo de múltiples factores.\"\n\nDIAPOSITIVA 14\n\nRespuesta a la pregunta de investigación\n\n\"Luego del análisis desarrollado a lo largo de esta investigación, la respuesta a la pregunta planteada es afirmativa, pero con ciertos matices.\n\nEl Servicio de Impuestos Internos sí dispone de herramientas relevantes para detectar y fiscalizar operaciones vinculadas a sociedades offshore.\n\nEntre ellas destacan la renta mundial, el régimen CFC, los precios de transferencia, la NGAE y los mecanismos internacionales de intercambio de información.\n\nSin embargo, la efectividad de estas herramientas depende de factores como la cooperación internacional, la disponibilidad de información, la identificación del beneficiario final y la especialización de los procesos de fiscalización.\n\nPor lo tanto, sí existen herramientas adecuadas, pero su suficiencia no puede considerarse absoluta.\"\n\nDIAPOSITIVA 15\n\nConclusión\n\n\"Para finalizar, puedo concluir que las sociedades offshore son vehículos jurídicos legítimos utilizados para organizar inversiones y activos internacionales.\n\nPor sí solas no constituyen evasión tributaria ni implican necesariamente incumplimiento legal.\n\nSu impacto tributario dependerá del uso que se haga de ellas.\n\nCuando existe transparencia, sustancia económica y cumplimiento tributario, pueden formar parte de estructuras completamente legítimas.\n\nSin embargo, cuando son utilizadas para ocultar rentas, beneficiarios o actividades económicas, pueden facilitar situaciones de evasión o elusión.\n\nRespecto de la pregunta principal de la investigación, concluyo que Chile dispone actualmente de herramientas relevantes para controlar estas estructuras, aunque su efectividad depende de continuar fortaleciendo el intercambio de información, la cooperación internacional y la capacidad técnica de fiscalización.\n\nMuchas gracias por su atención.\"";
+
+/* ===== Banco de preguntas =====
+   puntos: ideas que la comisión espera; kw = palabras o frases que cuentan como mencionar la idea */
+const BANCO = [
+{ id:"p1", lam:1, tema:"Objetivo", dif:1,
+  q:"Para comenzar, en sus propias palabras: ¿cuál fue el objetivo general de su investigación?",
+  puntos:[
+    {t:"Analizar qué son y cómo funcionan las sociedades offshore", kw:["que son","como funcionan","funcionamiento","concepto","naturaleza"]},
+    {t:"Identificar los riesgos tributarios que pueden generar", kw:["riesgo","evasion","elusion"]},
+    {t:"Evaluar si el SII tiene herramientas suficientes para fiscalizarlas", kw:["sii","servicio de impuestos","herramienta","fiscaliza","suficiente"]}
+  ],
+  modelo:"El objetivo fue analizar qué son las sociedades offshore y cómo funcionan, de qué manera pueden generar riesgos tributarios —evasión o elusión— y evaluar si el Servicio de Impuestos Internos dispone actualmente de herramientas suficientes para fiscalizar este tipo de estructuras."
+},
+{ id:"p3", lam:3, tema:"Pregunta de investigación", dif:2,
+  q:"Enuncie su pregunta de investigación y explique por qué incorporó los principios de equidad y sostenibilidad fiscal.",
+  puntos:[
+    {t:"Si el SII dispone de herramientas adecuadas para mitigar evasión y elusión offshore", kw:["herramientas adecuadas","dispone","mitigar","sii"]},
+    {t:"Equidad: que contribuyentes en igual situación paguen lo que corresponde", kw:["equidad","igualdad","justicia","carga tributaria","paguen"]},
+    {t:"Sostenibilidad: proteger la recaudación para financiar al Estado", kw:["sostenibilidad","recaudacion","financiar","gasto publico","ingresos fiscales"]},
+    {t:"La operación entre jurisdicciones dificulta identificar contribuyente y rentas", kw:["jurisdicc","identificar","identificacion","distintos paises"]}
+  ],
+  modelo:"La pregunta es: ¿dispone el SII de las herramientas adecuadas para mitigar los efectos adversos de la evasión y elusión fiscal generadas por las sociedades offshore, considerando los principios de equidad y sostenibilidad fiscal? Incorporé la equidad porque cuando algunos contribuyentes ocultan rentas en el exterior, la carga se distribuye injustamente sobre quienes sí cumplen; y la sostenibilidad porque la pérdida de recaudación afecta la capacidad del Estado de financiar sus políticas. El problema surge porque al operar entre jurisdicciones se dificulta identificar al contribuyente, las rentas y las obligaciones aplicables."
+},
+{ id:"p3b", lam:3, tema:"Pregunta de investigación", dif:2,
+  q:"Usted señala que evaluó tres aspectos para responder su pregunta. ¿Cuáles son y por qué esos tres?",
+  puntos:[
+    {t:"Las normas existentes", kw:["norma","legislacion","ley"]},
+    {t:"La información disponible para la autoridad", kw:["informacion"]},
+    {t:"La capacidad del SII para fiscalizar", kw:["capacidad","fiscaliz"]},
+    {t:"Justificación: tener normas no basta si no hay información ni capacidad para aplicarlas", kw:["no basta","no es suficiente","aplicar","combinacion","complement","sin informacion"]}
+  ],
+  modelo:"Primero, las normas existentes; segundo, la información disponible para la autoridad tributaria; y tercero, la capacidad del SII para fiscalizar. Elegí esos tres porque una norma por sí sola no basta: el SII necesita información para detectar los casos y capacidad técnica para aplicar esas normas. La eficacia depende de la combinación de los tres."
+},
+{ id:"p4", lam:4, tema:"Metodología", dif:2,
+  q:"Su investigación es documental. ¿Cuáles son las limitaciones de esa metodología para responder una pregunta sobre la eficacia del SII?",
+  puntos:[
+    {t:"No incluye datos empíricos propios (casos, cifras de fiscalización, entrevistas)", kw:["empiric","datos","cifras","entrevista","casos reales","estadistic","cuantitativ"]},
+    {t:"Depende de la información pública disponible / reservada por secreto tributario", kw:["publica","disponible","reserva","secreto","confidencial"]},
+    {t:"Por eso la conclusión es matizada y no absoluta", kw:["matiz","no absoluta","no puede considerarse absoluta","cautela","limitad"]},
+    {t:"Proyección: futuras investigaciones empíricas", kw:["futur","complementar","proxima investigacion","linea de investigacion"]}
+  ],
+  modelo:"La principal limitación es que no trabajé con datos empíricos propios, como estadísticas de fiscalización, casos concretos o entrevistas a funcionarios, en parte porque mucha de esa información está protegida por la reserva tributaria. Por eso mi conclusión es matizada: puedo afirmar que las herramientas existen y son relevantes, pero no medir con precisión su eficacia. Una investigación futura podría complementar este trabajo con datos empíricos."
+},
+{ id:"p4b", lam:4, tema:"Metodología", dif:1,
+  q:"Describa su enfoque metodológico. ¿Qué fuentes revisó?",
+  puntos:[
+    {t:"Enfoque documental", kw:["documental"]},
+    {t:"Descriptivo: explica el funcionamiento de las offshore", kw:["descriptiv"]},
+    {t:"Analítico: compara con normativa chilena y estándares internacionales", kw:["analitic","compar"]},
+    {t:"Fuentes: legislación, normativa del SII y estándares OCDE", kw:["legislacion","ley","sii","ocde","normativa"]}
+  ],
+  modelo:"Es una investigación documental, descriptiva y analítica. Descriptiva porque explica cómo funcionan las sociedades offshore; analítica porque compara estas estructuras con la normativa tributaria chilena y los estándares internacionales; y aplicada porque busca determinar si las herramientas existentes son adecuadas. Revisé legislación nacional, normativa y documentación del SII, y estándares internacionales, principalmente de la OCDE."
+},
+{ id:"p5", lam:5, tema:"Concepto offshore", dif:1,
+  q:"Defina qué es una sociedad offshore. ¿Es ilegal tener una?",
+  puntos:[
+    {t:"Sociedad constituida en una jurisdicción distinta a la de residencia de sus dueños o de su actividad", kw:["jurisdiccion distinta","otro pais","fuera del pais","extranjer","distinta del pais"]},
+    {t:"No es ilegal por definición", kw:["no es ilegal","no son ilegales","legal","legitim","licit"]},
+    {t:"Depende del uso y del cumplimiento de obligaciones", kw:["uso","cumplimiento","depende","obligaciones"]}
+  ],
+  modelo:"Es una sociedad mercantil constituida en una jurisdicción distinta del país donde residen sus dueños o donde se desarrolla la actividad principal; por ejemplo, un residente chileno que constituye una sociedad en Panamá. No es ilegal por definición: la palabra offshore solo indica que está fuera del país de residencia. Su evaluación tributaria depende del uso que se le dé y de que se cumplan las obligaciones legales, como declarar las rentas en Chile.",
+  re:{ q:"Entonces, si no es ilegal, ¿por qué alguien constituiría una sociedad en Islas Vírgenes Británicas y no en Chile? Deme razones legítimas.",
+    puntos:[
+      {t:"Inversión o negocios internacionales / administración de activos en varios países", kw:["inversion","internacional","activos","varios paises","negocios"]},
+      {t:"Neutralidad o eficiencia tributaria / evitar doble tributación", kw:["neutral","doble tributacion","eficien","tasa"]},
+      {t:"Seguridad jurídica, protección patrimonial, sucesión, facilidad societaria", kw:["seguridad juridica","proteccion","patrimonio","sucesion","herencia","flexib","facil","costos"]}
+    ],
+    modelo:"Hay razones legítimas: canalizar inversiones internacionales desde un solo vehículo, contar con un marco societario flexible y conocido por inversionistas extranjeros, neutralidad tributaria para no generar capas de impuesto adicionales en operaciones entre varios países, planificación patrimonial o sucesoria, y protección de activos. Lo relevante es que exista sustancia económica, documentación y que las rentas se declaren en Chile."}
+},
+{ id:"p6", lam:6, tema:"Concepto offshore", dif:1,
+  q:"Mencione las cuatro características principales de las sociedades offshore que identificó.",
+  puntos:[
+    {t:"Jurisdicción extranjera", kw:["jurisdiccion extranjera","extranjer","otro pais"]},
+    {t:"Inactividad local / sin actividad económica en el lugar de constitución", kw:["inactividad","sin actividad","no desarrolla actividad","agente residente","direccion legal"]},
+    {t:"Tributación reducida", kw:["tributacion reducida","baja tributacion","tasas bajas","exencion","exenta","territorial"]},
+    {t:"Privacidad corporativa / reserva de identidad", kw:["privacidad","confidencial","anonimato","identidad","reserva"]}
+  ],
+  modelo:"Primero, la jurisdicción extranjera: los dueños residen en un país y la sociedad se constituye en otro. Segundo, la inactividad local: muchas veces no desarrolla actividad relevante donde fue creada, y solo tiene una dirección legal a través de un agente residente. Tercero, la tributación reducida: exenciones, tasas bajas o regímenes territoriales. Y cuarto, la privacidad corporativa, que históricamente protegía la identidad de accionistas y beneficiarios finales, aunque hoy se ha reducido por los estándares de transparencia e intercambio automático de información.",
+  re:{ q:"Usted dice que la privacidad corporativa se ha reducido. ¿Qué la ha reducido concretamente?",
+    puntos:[
+      {t:"Intercambio automático de información (CRS)", kw:["crs","intercambio automatico","intercambio de informacion"]},
+      {t:"Estándares OCDE / Foro Global de transparencia", kw:["ocde","foro global","estandar"]},
+      {t:"Registros o identificación de beneficiario final", kw:["beneficiario final","registro"]},
+      {t:"Convenios tributarios", kw:["convenio","tratado","acuerdo"]}
+    ],
+    modelo:"Principalmente el intercambio automático de información financiera bajo el estándar CRS de la OCDE, los convenios tributarios con cláusulas de intercambio de información, el trabajo del Foro Global de Transparencia y la exigencia creciente de identificar al beneficiario final. Muchas jurisdicciones que antes eran opacas hoy comparten información con Chile."}
+},
+{ id:"p7", lam:7, tema:"Concepto offshore", dif:2,
+  q:"En su ejemplo de funcionamiento, ¿en qué momento concreto del esquema puede producirse la evasión?",
+  puntos:[
+    {t:"Cuando las rentas generadas no se declaran en Chile", kw:["no se declar","no declara","omit","ocult"]},
+    {t:"Cuando no se informa la participación o control de la sociedad", kw:["no informa","participacion","control","declaracion jurada"]},
+    {t:"Falta de finalidad económica real o documentación", kw:["finalidad economica","sustancia","documentacion","proposito"]}
+  ],
+  modelo:"El esquema en sí —constituir la sociedad, que mantenga activos y genere rentas— no es evasión. La evasión se produce cuando el contribuyente chileno no declara esas rentas en Chile pese al principio de renta mundial, cuando oculta su participación o control sobre la sociedad, o cuando entrega información falsa. Por eso la clave está en si existe finalidad económica real, documentación suficiente y cumplimiento de las obligaciones."
+},
+{ id:"p8", lam:8, tema:"Elusión vs. evasión", dif:2,
+  q:"¿Cuál es la diferencia entre planificación tributaria legítima, elusión y evasión? Deme un ejemplo con una offshore.",
+  puntos:[
+    {t:"Planificación: alternativas permitidas por la ley, forma coherente con la realidad económica", kw:["permitid","ley permite","legitim","coherencia","realidad economica"]},
+    {t:"Elusión: estructuras que obtienen ventajas sin reflejar el verdadero propósito económico", kw:["elusion","ventaja","proposito","abuso","artificial"]},
+    {t:"Evasión: incumplimiento directo, ocultamiento, subdeclaración o información falsa", kw:["evasion","ocult","subdeclar","falsa","incumpl"]},
+    {t:"Ejemplo concreto", kw:["ejemplo","por ejemplo","si una persona","supongamos","caso"]}
+  ],
+  modelo:"La planificación legítima usa alternativas que la ley permite, manteniendo coherencia entre la forma jurídica y la realidad económica. La elusión usa estructuras formalmente legales para obtener ventajas tributarias que no reflejan el verdadero propósito económico. La evasión es incumplir directamente la ley: ocultar, subdeclarar o entregar información falsa. Ejemplo: si una persona tiene inversiones en una offshore y declara sus rentas, es planificación; si interpone una sociedad sin sustancia solo para diferir indefinidamente la tributación de rentas pasivas, puede ser elusión; y si derechamente no declara los dividendos que recibe de esa sociedad, es evasión.",
+  re:{ q:"¿Y quién determina en Chile que una operación es elusiva? ¿Basta con que el SII lo sospeche?",
+    puntos:[
+      {t:"Se aplica la Norma General Antielusión (NGAE)", kw:["ngae","norma general antielusion","antielusion"]},
+      {t:"Debe acreditarse abuso de formas jurídicas o simulación", kw:["abuso","simulacion","formas juridicas"]},
+      {t:"No basta la ventaja tributaria; hay que analizar la realidad económica / debido proceso", kw:["no basta","realidad economica","procedimiento","tribunal","debido proceso","acreditar","prueba"]}
+    ],
+    modelo:"No basta la sospecha. Se aplica la Norma General Antielusión, que exige acreditar abuso de formas jurídicas o simulación mediante un procedimiento con garantías para el contribuyente, con posibilidad de reclamar ante los tribunales tributarios. Además, la sola existencia de una ventaja tributaria no implica elusión: siempre hay que analizar la realidad económica del caso."}
+},
+{ id:"p9a", lam:9, tema:"Normativa chilena", dif:1,
+  q:"Explique el principio de renta mundial y por qué es la base para controlar a las offshore.",
+  puntos:[
+    {t:"Domiciliados o residentes en Chile tributan por rentas de cualquier origen", kw:["domicili","residente"]},
+    {t:"Incluye rentas obtenidas en el extranjero", kw:["extranjero","fuera de chile","cualquier origen","todo el mundo"]},
+    {t:"Por eso las rentas de la offshore deben declararse en Chile cuando corresponde", kw:["declarar","declaradas","offshore"]}
+  ],
+  modelo:"Según el principio de renta mundial, las personas domiciliadas o residentes en Chile deben declarar no solo las rentas obtenidas en el país, sino también las obtenidas en el extranjero. Es la base del control porque, aunque la sociedad esté en otra jurisdicción, las rentas que el residente chileno obtiene de ella deben tributar en Chile; el problema práctico es detectarlas y determinar cuándo se entienden obtenidas.",
+  re:{ q:"Pero si la offshore no distribuye dividendos, el residente chileno no ha recibido nada. ¿Cómo se resuelve eso?",
+    puntos:[
+      {t:"Régimen CFC del artículo 41 G", kw:["41 g","41g","cfc","entidades controladas"]},
+      {t:"Las rentas pasivas se reconocen en Chile aunque no se distribuyan", kw:["aunque no se distribuy","sin distribu","no distribuy","devengad","reconoc"]},
+      {t:"Evita la acumulación indefinida en el exterior / diferimiento", kw:["acumul","diferi","indefinid"]}
+    ],
+    modelo:"Ahí opera el régimen CFC del artículo 41 G de la Ley sobre Impuesto a la Renta: las rentas pasivas de entidades controladas en el extranjero se reconocen en Chile como percibidas o devengadas por el controlador, aunque la sociedad no las distribuya. Así se evita que esas rentas queden acumuladas indefinidamente fuera de Chile difiriendo su tributación."}
+},
+{ id:"p9b", lam:9, tema:"Normativa chilena", dif:3,
+  q:"Profundicemos en el artículo 41 G. ¿Qué son las rentas pasivas y cuándo se entiende que una entidad es controlada?",
+  puntos:[
+    {t:"Rentas pasivas: dividendos, intereses, arriendos, regalías, ganancias de capital (no de actividad productiva)", kw:["dividendo","interes","arriendo","regalia","royalt","ganancia de capital","pasiv"]},
+    {t:"Control: más del 50% del capital, utilidades o derecho a voto", kw:["50","mayoria","mas de la mitad","derecho a voto","capital","utilidades"]},
+    {t:"Directo o indirecto, considerando partes relacionadas", kw:["indirect","relacionad"]},
+    {t:"Busca evitar el diferimiento indefinido", kw:["diferi","acumul","indefinid"]}
+  ],
+  modelo:"Las rentas pasivas son aquellas que no provienen de una actividad empresarial productiva: principalmente dividendos, intereses, arriendos, regalías y ciertas ganancias de capital. Se entiende que hay control cuando el contribuyente chileno, directa o indirectamente y junto con sus relacionados, posee más del 50 % del capital, de las utilidades o del derecho a voto, o puede elegir a la mayoría de los administradores. El objetivo es evitar que esas rentas se acumulen indefinidamente afuera."
+},
+{ id:"p9c", lam:9, tema:"Normativa chilena", dif:2,
+  q:"¿Qué regula el artículo 41 H y qué relación tiene con el 41 G?",
+  puntos:[
+    {t:"Define o identifica territorios con régimen fiscal preferencial", kw:["regimen fiscal preferencial","preferencial","paraiso","baja tributacion"]},
+    {t:"Criterios: baja tasa efectiva y/o falta de intercambio de información", kw:["tasa","intercambio","transparencia","informacion"]},
+    {t:"Relación: entidades en esos territorios reciben un trato más estricto / presunción de rentas pasivas", kw:["presun","mas estricto","se presume","relacion","complement","rentas pasivas"]}
+  ],
+  modelo:"El artículo 41 H identifica los territorios o jurisdicciones con régimen fiscal preferencial, considerando criterios como una tasa efectiva de impuesto baja o la falta de intercambio efectivo de información con Chile. Se relaciona con el 41 G porque, cuando la entidad controlada está en uno de esos territorios, la ley la trata con mayor rigor, presumiendo que sus rentas son pasivas salvo prueba en contrario. Además, estos territorios tienen efectos en otras normas, como precios de transferencia."
+},
+{ id:"p9d", lam:9, tema:"Normativa chilena", dif:2,
+  q:"¿Cómo contribuyen los precios de transferencia y el Impuesto Adicional al control de estas estructuras?",
+  puntos:[
+    {t:"Precios de transferencia: operaciones entre partes relacionadas", kw:["relacionad","precios de transferencia"]},
+    {t:"Principio de plena competencia / valor de mercado (arm's length)", kw:["plena competencia","mercado","arm","independientes"]},
+    {t:"Evitan trasladar utilidades artificialmente al exterior", kw:["traslad","artificial","utilidades","base"]},
+    {t:"Impuesto Adicional: grava rentas pagadas desde Chile a no residentes", kw:["impuesto adicional","no residente","exterior","remesa","pagadas desde chile"]}
+  ],
+  modelo:"Las normas de precios de transferencia permiten al SII revisar que las operaciones entre partes relacionadas —por ejemplo, entre una empresa chilena y una offshore del mismo grupo— se pacten a valores de mercado, bajo el principio de plena competencia, evitando que se trasladen utilidades artificialmente al exterior. El Impuesto Adicional, por su parte, grava ciertas rentas pagadas desde Chile a personas sin domicilio ni residencia en el país, de modo que esos pagos al exterior también tributen."
+},
+{ id:"p10a", lam:10, tema:"NGAE y Ley 21.713", dif:2,
+  q:"¿Qué es la Norma General Antielusión y cuáles son sus dos figuras?",
+  puntos:[
+    {t:"Facultad del SII para revisar operaciones elusivas", kw:["revisar","sii","facultad","fiscaliz"]},
+    {t:"Abuso de formas jurídicas", kw:["abuso"]},
+    {t:"Simulación", kw:["simulacion","simulad"]},
+    {t:"Una ventaja tributaria por sí sola no es elusión: se analiza la realidad económica", kw:["no implica","no necesariamente","realidad economica","por si sola","legitima opcion","economia de opcion"]}
+  ],
+  modelo:"La NGAE, incorporada en el Código Tributario, permite al SII revisar operaciones cuando existe abuso de formas jurídicas —actos que, individualmente o en conjunto, no producen efectos económicos relevantes distintos de los meramente tributarios— o simulación, cuando los actos ocultan la verdadera naturaleza de la operación. Pero la existencia de una ventaja tributaria no implica por sí sola elusión: la ley reconoce la legítima razón de negocios y siempre debe analizarse la realidad económica del caso.",
+  re:{ q:"Desde su experiencia investigando, ¿la NGAE ha sido eficaz en la práctica?",
+    puntos:[
+      {t:"Reconoce que su aplicación ha sido limitada o compleja", kw:["limitad","poca","escasa","compleja","pocos casos","dificil"]},
+      {t:"Su valor también es disuasivo / preventivo", kw:["disuasi","prevent","desincentiv"]},
+      {t:"La Ley 21.713 buscó fortalecerla / mayor capacidad del SII", kw:["21.713","21713","fortalec","reforma"]},
+      {t:"Prudencia: su eficacia no puede medirse solo con documentos", kw:["no puedo medir","documental","empiric","matiz","depende"]}
+    ],
+    modelo:"Mi investigación es documental, así que no mido su eficacia con cifras, pero la literatura muestra que su aplicación ha sido acotada y compleja, por las exigencias probatorias y el procedimiento. Aun así, tiene un efecto disuasivo importante, porque los contribuyentes saben que estructuras sin sustancia pueden ser revisadas. Y la Ley 21.713 justamente buscó fortalecer las facultades del SII en esta materia."}
+},
+{ id:"p10b", lam:10, tema:"NGAE y Ley 21.713", dif:2,
+  q:"Usted menciona la Ley 21.713. ¿Qué aporta concretamente al control de las estructuras offshore?",
+  puntos:[
+    {t:"Ley de cumplimiento tributario (2024)", kw:["cumplimiento","2024"]},
+    {t:"Fortalece facultades de fiscalización y obtención de información", kw:["facultad","fiscaliz","informacion"]},
+    {t:"Mejora coordinación entre organismos", kw:["coordin","organismo","instituciones"]},
+    {t:"Permite enfrentar operaciones más complejas", kw:["complej","sofistic"]}
+  ],
+  modelo:"La Ley 21.713, conocida como ley de cumplimiento de las obligaciones tributarias, publicada en 2024, fortaleció las facultades de fiscalización del SII: mejora su capacidad para obtener información, para coordinarse con otros organismos y para enfrentar operaciones más complejas, como las que involucran estructuras en el extranjero. Es parte de por qué concluyo que Chile ha avanzado significativamente en transparencia y fiscalización."
+},
+{ id:"p11a", lam:11, tema:"Marco internacional", dif:2,
+  q:"Explique qué es el CRS y cuál es su límite.",
+  puntos:[
+    {t:"Common Reporting Standard / estándar de la OCDE", kw:["common reporting","estandar comun","ocde","crs"]},
+    {t:"Intercambio automático de información financiera entre jurisdicciones", kw:["intercambio automatico","automatic","informacion financiera","cuentas"]},
+    {t:"Chile recibe información de cuentas de residentes chilenos en el exterior", kw:["residentes chilenos","cuentas en el extranjero","chile recibe","chile puede recibir"]},
+    {t:"Límite: no todas las jurisdicciones participan o entregan información con igual oportunidad/calidad", kw:["no todas","no participan","calidad","oportunidad","detalle","limite","beneficiario final","fideicomiso","trust"]}
+  ],
+  modelo:"El CRS, o Estándar Común de Reporte de la OCDE, es un mecanismo de intercambio automático de información financiera: las instituciones financieras reportan las cuentas de no residentes a su administración tributaria, y esta envía la información al país de residencia. Así, Chile puede recibir datos de cuentas de residentes chilenos en el extranjero. Su límite es que no todas las jurisdicciones participan ni entregan información con la misma oportunidad y detalle, y que capas societarias, trusts o fundaciones pueden dificultar identificar al beneficiario final."
+},
+{ id:"p11b", lam:11, tema:"Marco internacional", dif:2,
+  q:"¿Qué es el proyecto BEPS y qué acciones son relevantes para su tema?",
+  puntos:[
+    {t:"Base Erosion and Profit Shifting / erosión de bases y traslado de beneficios", kw:["base erosion","erosion","traslado de beneficios","profit shifting"]},
+    {t:"Impulsado por la OCDE (y el G20)", kw:["ocde","g20"]},
+    {t:"Evitar traslado artificial de utilidades a territorios de baja tributación", kw:["traslad","artificial","baja tributacion"]},
+    {t:"Acciones relevantes: CFC, precios de transferencia, transparencia/reporte país por país, abuso de tratados", kw:["cfc","precios de transferencia","pais por pais","transparencia","tratados","accion"]}
+  ],
+  modelo:"BEPS significa erosión de la base imponible y traslado de beneficios. Es un proyecto de la OCDE y el G20 cuyo objetivo es evitar que las utilidades se trasladen artificialmente a territorios de baja tributación. Para mi tema son especialmente relevantes las acciones sobre reglas CFC, precios de transferencia, documentación y reporte país por país, y prevención del abuso de convenios. Chile ha incorporado varias de estas recomendaciones en su legislación."
+},
+{ id:"p11c", lam:11, tema:"Marco internacional", dif:2,
+  q:"¿Por qué la cooperación internacional es indispensable en este tema? ¿No bastan las leyes chilenas?",
+  puntos:[
+    {t:"La ley chilena no tiene alcance sobre otra jurisdicción / soberanía", kw:["soberan","no tiene alcance","otra jurisdiccion","territorial","fuera de chile"]},
+    {t:"El SII necesita información que está en el extranjero", kw:["informacion","datos","en el extranjero"]},
+    {t:"Convenios e intercambio de información permiten obtenerla", kw:["convenio","intercambio","crs","tratado"]}
+  ],
+  modelo:"No bastan, porque la ley chilena puede obligar al contribuyente, pero no a una autoridad o banco de otra jurisdicción. Aunque Chile tenga buenas normas como la renta mundial o el 41 G, sin información sobre las cuentas, los socios o las rentas en el exterior el SII no puede aplicarlas. Por eso los convenios tributarios, el CRS y la cooperación entre administraciones son indispensables."
+},
+{ id:"p12", lam:12, tema:"Herramientas del SII", dif:2,
+  q:"Usted afirma que la fortaleza del SII está en la combinación de herramientas. ¿Puede explicar cómo se articulan en un caso concreto?",
+  puntos:[
+    {t:"Información: declaraciones juradas e intercambio internacional", kw:["declaracion jurada","declaraciones juradas","intercambio","crs","informacion"]},
+    {t:"Normas sustantivas: renta mundial, 41 G, 41 H, NGAE", kw:["renta mundial","41 g","41g","41 h","41h","ngae","antielusion"]},
+    {t:"Precios de transferencia para operaciones entre relacionados", kw:["precios de transferencia","relacionad"]},
+    {t:"Coordinación con otros organismos / capacidad técnica", kw:["coordin","organismo","capacidad tecnica","uaf","especializ"]},
+    {t:"Lo ilustra con una secuencia o ejemplo", kw:["por ejemplo","primero","luego","caso","supongamos","si un"]}
+  ],
+  modelo:"Por ejemplo: un residente chileno no declara participación en una sociedad panameña. Por el CRS, el SII recibe información de una cuenta a nombre de esa sociedad cuyo beneficiario es él; lo cruza con sus declaraciones juradas y detecta la omisión. Luego aplica la renta mundial y el 41 G para gravar las rentas pasivas acumuladas; si Panamá estuviera calificado como régimen preferencial por el 41 H, se presumen pasivas. Si hubo operaciones con su empresa chilena, revisa precios de transferencia, y si la estructura carece de sustancia, puede evaluar la NGAE. Ninguna herramienta funciona sola; es la combinación lo que da fortaleza."
+},
+{ id:"p13", lam:13, tema:"Dificultades", dif:2,
+  q:"De las dificultades actuales que identificó, ¿cuál considera la más grave y por qué?",
+  puntos:[
+    {t:"Elige una dificultad concreta", kw:["capas","trust","fundacion","beneficiario final","jurisdicciones","informacion","sustancia","especializ","capacidad tecnica"]},
+    {t:"Identificación del beneficiario final / controlador real", kw:["beneficiario final","controlador","verdadero dueno","quien controla"]},
+    {t:"Justifica por qué es la más grave (de ella dependen las demás herramientas)", kw:["porque","ya que","sin eso","depende","base","punto de partida","no se puede aplicar"]}
+  ],
+  modelo:"Considero que la más grave es la identificación del beneficiario final, es decir, quién controla realmente la estructura cuando hay múltiples capas societarias, trusts o fundaciones. Es la más grave porque las demás herramientas dependen de ella: el 41 G exige determinar control, la renta mundial exige saber a quién atribuir la renta y el intercambio de información sirve poco si la cuenta figura a nombre de una entidad interpuesta."
+},
+{ id:"p13b", lam:13, tema:"Dificultades", dif:3,
+  q:"¿Cómo distingue el SII si una offshore tiene actividad económica real o es meramente instrumental?",
+  puntos:[
+    {t:"Sustancia económica: personal, oficinas, activos, gestión efectiva", kw:["personal","empleado","oficina","activos","gestion","administracion efectiva","sustancia"]},
+    {t:"Dónde se toman realmente las decisiones", kw:["decisiones","donde se administra","direccion","control efectivo"]},
+    {t:"Propósito económico distinto del tributario / razón de negocios", kw:["proposito","razon de negocios","finalidad","distinto del tributario"]},
+    {t:"Documentación y coherencia entre forma y realidad", kw:["documentacion","coherencia","contratos","forma"]}
+  ],
+  modelo:"Se analiza la sustancia económica: si la sociedad tiene personal, oficinas, activos y gestión efectiva en su jurisdicción, o si solo existe una dirección legal provista por un agente. También dónde se toman realmente las decisiones, si existe una razón de negocios distinta de la ventaja tributaria y si la documentación es coherente con la realidad económica. Una sociedad sin nada de esto es un indicio de estructura instrumental."
+},
+{ id:"p14", lam:14, tema:"Respuesta y conclusión", dif:2,
+  q:"Usted responde que sí, pero con matices. ¿No es eso una forma de no comprometerse con una respuesta?",
+  puntos:[
+    {t:"Defiende que la respuesta es afirmativa: las herramientas existen y son relevantes", kw:["afirmativ","si dispone","existen","herramientas relevantes","si existen"]},
+    {t:"Distingue existencia/adecuación de las herramientas vs. su eficacia o suficiencia", kw:["eficacia","efectividad","suficiencia","existencia","no es lo mismo","distinguir"]},
+    {t:"Factores de los que depende: cooperación, información, beneficiario final, especialización", kw:["cooperacion","informacion","beneficiario final","especializ"]},
+    {t:"El matiz responde a la evidencia, no a falta de postura", kw:["evidencia","rigor","responsable","no es falta","postura","honest","objetiv"]}
+  ],
+  modelo:"No, es una respuesta comprometida: afirmo que el SII sí dispone de herramientas adecuadas —renta mundial, régimen CFC, precios de transferencia, NGAE e intercambio internacional—. El matiz distingue entre la existencia de las herramientas y su suficiencia: su eficacia depende de factores que no controla completamente el SII, como la cooperación internacional, la calidad de la información y la identificación del beneficiario final. Afirmar una suficiencia absoluta no sería consistente con la evidencia que revisé."
+},
+{ id:"p14b", lam:14, tema:"Respuesta y conclusión", dif:3,
+  q:"Si usted fuera directora del SII, ¿qué medidas propondría a partir de sus conclusiones?",
+  puntos:[
+    {t:"Fortalecer el intercambio de información y la cooperación internacional", kw:["intercambio","cooperacion","convenio","crs"]},
+    {t:"Mejorar la identificación del beneficiario final (registros)", kw:["beneficiario final","registro"]},
+    {t:"Especialización de fiscalizadores / capacidad técnica y tecnológica", kw:["especializ","capacit","tecnolog","analitica","datos","fiscalizadores","equipo"]},
+    {t:"Medidas coherentes con sus conclusiones (no ideas sueltas)", kw:["como conclui","a partir","coherente","debilidad","dificultad","conclusion"]}
+  ],
+  modelo:"Coherente con mis conclusiones, propondría tres líneas: primero, seguir fortaleciendo el intercambio de información y la cooperación internacional, ampliando convenios; segundo, mejorar la identificación del beneficiario final, cruzando registros nacionales con la información recibida del exterior; y tercero, invertir en especialización técnica y herramientas de análisis de datos para fiscalizar estructuras complejas. Son justamente los factores de los que, según mi investigación, depende la eficacia de las herramientas."
+},
+{ id:"p15", lam:15, tema:"Respuesta y conclusión", dif:1,
+  q:"Resuma su conclusión principal en menos de un minuto.",
+  puntos:[
+    {t:"Las offshore son vehículos legítimos; por sí solas no son evasión", kw:["legitim","no constituyen","por si solas","no son evasion","no implican"]},
+    {t:"Su impacto depende del uso: transparencia y sustancia vs. ocultamiento", kw:["uso","depende","transparencia","sustancia","ocultar"]},
+    {t:"Chile dispone de herramientas relevantes", kw:["herramientas relevantes","dispone","chile"]},
+    {t:"Su efectividad depende de seguir fortaleciendo información, cooperación y capacidad técnica", kw:["fortalec","cooperacion","capacidad tecnica","intercambio"]}
+  ],
+  modelo:"Las sociedades offshore son vehículos jurídicos legítimos que, por sí solos, no constituyen evasión; su impacto depende del uso. Con transparencia, sustancia económica y cumplimiento, son legítimas; usadas para ocultar rentas o beneficiarios, facilitan evasión o elusión. Chile dispone de herramientas relevantes para controlarlas, pero su efectividad depende de seguir fortaleciendo el intercambio de información, la cooperación internacional y la capacidad técnica de fiscalización."
+},
+{ id:"px1", lam:11, tema:"Marco internacional", dif:3,
+  q:"Casos como los Panama Papers o los Pandora Papers mostraron a muchos chilenos con sociedades offshore. ¿Qué nos dicen esos casos respecto de su tesis?",
+  puntos:[
+    {t:"Muestran que la opacidad era real y motivaron reformas de transparencia", kw:["opacidad","transparencia","reforma","motivaron","impulsaron","presion"]},
+    {t:"Tener una offshore no prueba evasión: hay que analizar cada caso", kw:["no prueba","no implica","no necesariamente","cada caso","legitim","no todas"]},
+    {t:"Refuerzan la importancia del beneficiario final y del intercambio de información", kw:["beneficiario final","intercambio","informacion"]}
+  ],
+  modelo:"Esas filtraciones demostraron que la opacidad de ciertas jurisdicciones era real y aceleraron las reformas de transparencia e intercambio de información. Pero coherente con mi tesis, aparecer en esas listas no prueba evasión: muchas estructuras estaban declaradas y eran legítimas. Lo que estos casos refuerzan es la importancia de identificar al beneficiario final y de que la información llegue a la administración tributaria por canales formales, no por filtraciones."
+},
+{ id:"px2", lam:5, tema:"Concepto offshore", dif:3,
+  q:"¿Cuál es la diferencia entre una sociedad offshore y un paraíso fiscal? ¿Usa usted ambos términos como sinónimos?",
+  puntos:[
+    {t:"Offshore es una sociedad (un vehículo); paraíso fiscal es una jurisdicción (un territorio)", kw:["jurisdiccion","territorio","pais","vehiculo","entidad"]},
+    {t:"No son sinónimos: puede haber offshore fuera de paraísos fiscales", kw:["no son sinonimos","no son lo mismo","distint","no necesariamente"]},
+    {t:"En Chile se usa la noción de régimen fiscal preferencial (art. 41 H)", kw:["41 h","41h","regimen fiscal preferencial","preferencial"]}
+  ],
+  modelo:"No son sinónimos. La sociedad offshore es un vehículo jurídico constituido fuera del país de residencia de sus dueños; el paraíso fiscal es una jurisdicción con baja o nula tributación y poca transparencia. Una offshore puede estar en un país que no es paraíso fiscal. Además, la legislación chilena no usa el término paraíso fiscal, sino régimen fiscal preferencial, definido en el artículo 41 H."
+}
+];
+
+const LAMINAS = {1:"Presentación",3:"Pregunta de investigación",4:"Metodología",5:"¿Qué es una offshore?",6:"Características",7:"Funcionamiento",8:"Legítimo, elusión, evasión",9:"Normativa chilena",10:"NGAE y Ley 21.713",11:"Marco internacional",12:"Herramientas del SII",13:"Dificultades",14:"Respuesta",15:"Conclusión"};
+
+/* ===== Personalidad del profesor ===== */
+const FRASES = {
+  amable:{
+    apertura:["Muy bien, Fabiana. Comencemos con calma.","Gracias por su exposición, fue muy clara. Tengo algunas preguntas."],
+    puente:["Bien. Sigamos.","Perfecto, pasemos a otro punto.","Gracias. Ahora quisiera preguntarle otra cosa."],
+    alto:["Excelente respuesta, muy completa.","Muy bien, eso es exactamente lo que esperaba escuchar."],
+    medio:["Va por buen camino, pero le faltó desarrollar algunos elementos.","Bien, aunque podría ser más precisa."],
+    bajo:["Tranquila, revisemos esto juntos.","Le faltaron varios elementos importantes; repasemos."],
+    tiempo:"Se nos acabó el tiempo para esta pregunta, pero veamos lo que alcanzó a decir.",
+    cierre:"Muchas gracias, Fabiana. La comisión deliberará."
+  },
+  neutral:{
+    apertura:["Gracias por su exposición. La comisión tiene algunas preguntas.","Bien. Pasemos a la ronda de preguntas."],
+    puente:["Siguiente pregunta.","Pasemos a otro tema.","Quisiera preguntarle lo siguiente."],
+    alto:["Correcto, respuesta completa.","Bien fundamentado."],
+    medio:["Parcialmente correcto.","Su respuesta es incompleta en algunos aspectos."],
+    bajo:["La respuesta no aborda los elementos centrales.","Esperaba una respuesta más precisa."],
+    tiempo:"Tiempo. Evaluaremos lo que alcanzó a responder.",
+    cierre:"Muchas gracias. La comisión deliberará y le comunicará su calificación."
+  },
+  exigente:{
+    apertura:["Su exposición fue correcta, pero tengo dudas de fondo. Comencemos.","Veamos qué tan sólida es su tesis."],
+    puente:["Siguiente.","Bien, pero no me convence del todo. Otra pregunta.","Continuemos. Sea precisa."],
+    alto:["Aceptable. Es lo que se espera de una tesista.","Correcto. Bien defendido."],
+    medio:["Insuficiente para una defensa de tesis; faltan elementos.","Eso es una respuesta a medias."],
+    bajo:["No. Eso no responde la pregunta.","Esa respuesta preocupa a la comisión: es su propio trabajo."],
+    tiempo:"Se acabó el tiempo. En una defensa real, la comisión no espera.",
+    cierre:"Gracias. La comisión deliberará."
+  }
+};
+
+/* ===== Utilidades ===== */
+const $ = s => document.querySelector(s);
+const norm = s => (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9ñ.\s%]/g," ").replace(/\s+/g," ");
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store = { get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}}, set(k,v){try{localStorage.setItem(k,v);}catch(e){}} };
+const notaDe = p => p<0.6 ? 1+3*(p/0.6) : 4+3*((p-0.6)/0.4);
+const colorDe = p => p>=0.75?"var(--ok)":p>=0.5?"var(--mid)":"var(--bad)";
+
+function evaluarLocal(resp, puntos){
+  const r = " "+norm(resp)+" ";
+  const res = puntos.map(p=>({t:p.t, ok:p.kw.some(k=>r.includes(norm(k).trim()))}));
+  const largo = norm(resp).split(" ").filter(Boolean).length;
+  let pct = res.filter(x=>x.ok).length/puntos.length;
+  if(largo<12) pct = Math.min(pct,0.4);   // respuestas demasiado breves
+  return {pct, res, largo};
+}
+
+/* ===== Estado ===== */
+let S = {mode:"defensa", laminas:new Set([9,10,11,14]), cola:[], idx:0, log:[], actual:null, esperando:false, timerId:null, restante:0};
+
+/* ===== Inicio ===== */
+function initInicio(){
+  const chips = $("#chips");
+  Object.entries(LAMINAS).forEach(([n,t])=>{
+    const b=document.createElement("button"); b.className="chip"; b.dataset.l=n;
+    b.textContent=n+" · "+t; b.setAttribute("aria-pressed", S.laminas.has(+n));
+    b.onclick=()=>{ const k=+n; S.laminas.has(k)?S.laminas.delete(k):S.laminas.add(k); b.setAttribute("aria-pressed",S.laminas.has(k)); hint(); };
+    chips.appendChild(b);
+  });
+  document.querySelectorAll(".mode").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll(".mode").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true"); S.mode=b.dataset.mode;
+    $("#slidePick").classList.toggle("hidden",S.mode!=="lamina"); hint();
+  });
+  $("#apiKey").value = store.get("cx_key","");
+  $("#apiModel").value = store.get("cx_model","claude-sonnet-5-5");
+  $("#estilo").value = store.get("cx_estilo","neutral");
+  $("#tiempo").value = store.get("cx_tiempo","90");
+  hint();
+}
+function construirCola(){
+  if(S.mode==="todas") return shuffle(BANCO);
+  if(S.mode==="lamina") return shuffle(BANCO.filter(q=>S.laminas.has(q.lam)));
+  const clave = shuffle(BANCO.filter(q=>[9,10,11,14].includes(q.lam))).slice(0,5);
+  const resto = shuffle(BANCO.filter(q=>!clave.includes(q))).slice(0,3);
+  // orden natural de una comisión: avanza según la presentación
+  return [...clave,...resto].sort((a,b)=>a.lam-b.lam);
+}
+function hint(){
+  const n = S.mode==="defensa"?8 : S.mode==="todas"?BANCO.length : BANCO.filter(q=>S.laminas.has(q.lam)).length;
+  $("#countHint").textContent = n+" preguntas"+($("#repreg").checked?" + repreguntas":"");
+  $("#startBtn").disabled = n===0;
+}
+$("#repreg").onchange=hint;
+
+/* ===== Voz ===== */
+let vozES=null;
+function cargarVoces(){
+  const vs = speechSynthesis.getVoices();
+  vozES = vs.find(v=>/es[-_]CL/i.test(v.lang)) || vs.find(v=>/es[-_](419|MX|US|AR)/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
+}
+if("speechSynthesis" in window){ cargarVoces(); speechSynthesis.onvoiceschanged=cargarVoces; }
+function hablar(txt){
+  if(!$("#voz").checked || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt); u.lang = vozES?vozES.lang:"es-CL"; if(vozES) u.voice=vozES; u.rate=0.98;
+  speechSynthesis.speak(u);
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec=null, grabando=false, baseTxt="";
+if(!SR){ $("#micBtn").title="Tu navegador no permite dictado (usa Chrome o Edge)"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
+$("#micBtn").onclick=()=>{
+  if(!SR) return;
+  if(grabando){ rec.stop(); return; }
+  if("speechSynthesis" in window) speechSynthesis.cancel();
+  rec=new SR(); rec.lang="es-CL"; rec.continuous=true; rec.interimResults=true;
+  baseTxt=$("#ans").value.trim(); if(baseTxt) baseTxt+=" ";
+  rec.onresult=e=>{ let fin="",tmp=""; for(let i=0;i<e.results.length;i++){ const t=e.results[i][0].transcript; e.results[i].isFinal?fin+=t+" ":tmp+=t; } $("#ans").value=baseTxt+fin+tmp; };
+  rec.onend=()=>{ grabando=false; $("#micBtn").classList.remove("on"); $("#micBtn").textContent="🎤 Hablar"; };
+  rec.onerror=()=>{};
+  rec.start(); grabando=true; $("#micBtn").classList.add("on"); $("#micBtn").textContent="■ Detener";
+};
+
+/* ===== Chat ===== */
+function msg(quien, html){
+  const d=document.createElement("div"); d.className="msg "+quien;
+  d.innerHTML=`<div class="av">${quien==="prof"?"P":"F"}</div><div class="bubble">${html}</div>`;
+  $("#chat").appendChild(d); $("#chat").scrollTop=$("#chat").scrollHeight; return d;
+}
+function escribiendo(){ const d=msg("prof",'<span class="typing">El profesor está tomando notas…</span>'); return d; }
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const F = () => FRASES[$("#estilo").value];
+
+async function comenzar(){
+  store.set("cx_key",$("#apiKey").value.trim()); store.set("cx_model",$("#apiModel").value.trim());
+  store.set("cx_estilo",$("#estilo").value); store.set("cx_tiempo",$("#tiempo").value);
+  S.cola = construirCola().map(q=>({...q, esRe:false}));
+  S.idx=0; S.log=[];
+  $("#vInicio").classList.add("hidden"); $("#vInforme").classList.add("hidden"); $("#vExamen").classList.remove("hidden");
+  $("#chat").innerHTML="";
+  const ap = pick(F().apertura);
+  msg("prof", esc(ap)); hablar(ap);
+  await sleep(1200);
+  preguntar();
+}
+function contarPrincipales(){ return S.cola.filter(q=>!q.esRe).length; }
+function preguntar(){
+  if(S.idx>=S.cola.length) return terminar();
+  const q = S.cola[S.idx]; S.actual=q; S.esperando=true;
+  const nPrin = S.cola.slice(0,S.idx+1).filter(x=>!x.esRe).length;
+  $("#qCount").textContent = q.esRe ? `Repregunta · ${nPrin} de ${contarPrincipales()}` : `Pregunta ${nPrin} de ${contarPrincipales()}`;
+  $("#prog").style.width = (100*(nPrin-1)/contarPrincipales())+"%";
+  const tag = q.esRe ? "Repregunta" : `Lámina ${q.lam} · ${q.tema}`;
+  msg("prof", `<div class="tag">${esc(tag)}</div><div class="q">${esc(q.q)}</div>`);
+  hablar(q.q);
+  $("#composer").classList.remove("hidden"); $("#nextRow").classList.add("hidden");
+  $("#ans").value=""; $("#ans").focus();
+  iniciarTimer();
+}
+function iniciarTimer(){
+  clearInterval(S.timerId);
+  const t=+$("#tiempo").value; const el=$("#timer");
+  if(!t){ el.classList.add("hidden"); return; }
+  S.restante=t; el.classList.remove("hidden","low");
+  const pinta=()=>{ el.textContent=Math.floor(S.restante/60)+":"+String(S.restante%60).padStart(2,"0"); el.classList.toggle("low",S.restante<=15); };
+  pinta();
+  S.timerId=setInterval(()=>{ S.restante--; pinta(); if(S.restante<=0){ clearInterval(S.timerId); responder(true); } },1000);
+}
+
+async function responder(porTiempo=false){
+  if(!S.esperando) return;
+  const txt=$("#ans").value.trim();
+  if(!txt && !porTiempo) { $("#ans").focus(); return; }
+  S.esperando=false; clearInterval(S.timerId);
+  if(grabando && rec) rec.stop();
+  $("#composer").classList.add("hidden");
+  msg("me", txt?esc(txt):"<i>(sin respuesta)</i>");
+  if(porTiempo){ msg("prof", esc(F().tiempo)); }
+  const q=S.actual;
+  const t=escribiendo();
+  let ev = evaluarLocal(txt,q.puntos), comentario=null, reIA=null, viaIA=false;
+  const key=$("#apiKey").value.trim();
+  if(key && txt){
+    try{ const r=await evaluarIA(key,q,txt); ev.pct=Math.max(0,Math.min(1,r.puntaje/100)); comentario=r.comentario; reIA=r.repregunta; viaIA=true;
+      if(Array.isArray(r.puntos_logrados)) ev.res = q.puntos.map((p,i)=>({t:p.t, ok:!!r.puntos_logrados[i]}));
+    }catch(e){ comentario=null; console.warn("IA no disponible:",e); }
+  } else { await sleep(900); }
+  t.remove();
+  const tier = ev.pct>=0.75?"alto":ev.pct>=0.5?"medio":"bajo";
+  const frase = comentario || pick(F()[tier]);
+  const nota = notaDe(ev.pct);
+  msg("prof", `
+    <div class="score"><span class="dot" style="background:${colorDe(ev.pct)}"></span>${Math.round(ev.pct*100)} % de los puntos clave · nota ${nota.toFixed(1).replace(".",",")}</div>
+    <div>${esc(frase)}</div>
+    <ul class="pts">${ev.res.map(x=>`<li class="${x.ok?"y":"n"}">${esc(x.t)}</li>`).join("")}</ul>
+    <details class="model"><summary>Ver respuesta sugerida</summary><div>${esc(q.modelo)}</div></details>
+    ${viaIA?'<div class="hint" style="margin-top:6px">Evaluado con IA</div>':''}`);
+  hablar(frase);
+  S.log.push({q, txt, pct:ev.pct, nota, falt:ev.res.filter(x=>!x.ok).map(x=>x.t)});
+
+  // Repregunta: la pauta trae una, o la IA propone una si la respuesta fue débil
+  if($("#repreg").checked && !q.esRe){
+    if(q.re && (ev.pct<1 || Math.random()<0.6)){
+      S.cola.splice(S.idx+1,0,{...q.re, id:q.id+"-re", lam:q.lam, tema:q.tema, esRe:true});
+    } else if(reIA && ev.pct<0.75){
+      S.cola.splice(S.idx+1,0,{id:q.id+"-ia", lam:q.lam, tema:q.tema, esRe:true, q:reIA, puntos:q.puntos, modelo:q.modelo});
+    }
+  }
+  S.idx++;
+  $("#nextBtn").textContent = S.idx>=S.cola.length ? "Ver acta de la comisión →" : (S.cola[S.idx].esRe?"Escuchar repregunta →":"Siguiente pregunta →");
+  $("#nextRow").classList.remove("hidden"); $("#nextBtn").focus();
+}
+
+async function evaluarIA(key,q,resp){
+  const estilo={amable:"cordial y alentador",neutral:"formal y objetivo",exigente:"exigente y riguroso, como un académico difícil"}[$("#estilo").value];
+  const sys=`Eres profesor de derecho tributario y miembro de la comisión examinadora en la defensa de tesis de pregrado de Fabiana Rodríguez Valdés (Chile). Tu estilo es ${estilo}. Evalúas su respuesta oral a una pregunta, basándote en su presentación y la pauta. Respondes SOLO con JSON válido, sin texto adicional.
+
+PRESENTACIÓN DE LA TESISTA:
+${TESIS}`;
+  const user=`PREGUNTA: ${q.q}
+
+PUNTOS CLAVE DE LA PAUTA (en orden):
+${q.puntos.map((p,i)=>(i+1)+". "+p.t).join("\n")}
+
+RESPUESTA DE REFERENCIA: ${q.modelo}
+
+RESPUESTA DE LA TESISTA: """${resp}"""
+
+Devuelve este JSON:
+{"puntos_logrados":[true/false por cada punto clave, en orden],"puntaje":0-100,"comentario":"2 a 4 oraciones en español de Chile, hablándole de 'usted', como lo diría el profesor en voz alta: qué estuvo bien, qué faltó o qué fue impreciso jurídicamente","repregunta":"una repregunta breve y punzante que un profesor haría a partir de lo que ella dijo, o cadena vacía si la respuesta fue excelente"}`;
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:$("#apiModel").value.trim()||"claude-sonnet-5-5",max_tokens:700,system:sys,messages:[{role:"user",content:user}]})});
+  if(!r.ok) throw new Error("HTTP "+r.status+" "+(await r.text()).slice(0,200));
+  const j=await r.json(); const t=j.content.map(c=>c.text||"").join("");
+  const m=t.match(/\{[\s\S]*\}/); if(!m) throw new Error("sin JSON");
+  return JSON.parse(m[0]);
+}
+
+/* ===== Informe ===== */
+function terminar(){
+  clearInterval(S.timerId); if("speechSynthesis" in window) speechSynthesis.cancel();
+  if(!S.log.length){ volver(); return; }
+  hablar(F().cierre);
+  $("#vExamen").classList.add("hidden"); $("#vInforme").classList.remove("hidden");
+  const prom = S.log.reduce((a,x)=>a+x.pct,0)/S.log.length;
+  const nota = notaDe(prom);
+  $("#nota").textContent = nota.toFixed(1).replace(".",",");
+  $("#nota").style.color = colorDe(prom);
+  $("#notaTxt").textContent = nota>=6?"Defensa sólida. La comisión aprobaría con distinción si mantiene este nivel.":
+    nota>=5?"Buena defensa. Refuerce los puntos marcados para llegar a la distinción.":
+    nota>=4?"Aprobaría, pero con observaciones. Repase los temas en rojo antes de la defensa real.":
+    "Todavía hay temas que no domina. Practique las preguntas débiles y revise las respuestas sugeridas.";
+  const temas={}; S.log.forEach(x=>{ (temas[x.q.tema]=temas[x.q.tema]||[]).push(x.pct); });
+  $("#topics").innerHTML = Object.entries(temas).map(([t,a])=>{ const p=a.reduce((x,y)=>x+y,0)/a.length;
+    return `<div class="topic"><b style="color:${colorDe(p)}">${Math.round(p*100)} %</b>${esc(t)}</div>`; }).join("");
+  $("#tbody").innerHTML = S.log.map((x,i)=>`<tr><td>${i+1}</td><td>${x.q.esRe?'<span class="tag">Repregunta</span><br>':''}${esc(x.q.q)}${x.falt.length?`<div class="hint" style="margin-top:4px">Faltó: ${esc(x.falt.join(" · "))}</div>`:""}</td>
+    <td style="white-space:nowrap"><b>${notaDe(x.pct).toFixed(1).replace(".",",")}</b><div class="meter"><i style="width:${x.pct*100}%;background:${colorDe(x.pct)}"></i></div></td></tr>`).join("");
+}
+function volver(){ $("#vExamen").classList.add("hidden"); $("#vInforme").classList.add("hidden"); $("#vInicio").classList.remove("hidden"); if("speechSynthesis" in window) speechSynthesis.cancel(); }
+
+$("#startBtn").onclick=comenzar;
+$("#sendBtn").onclick=()=>responder(false);
+$("#nextBtn").onclick=()=>{ $("#nextRow").classList.add("hidden"); const p=pick(F().puente); if(S.idx<S.cola.length && !S.cola[S.idx].esRe){ msg("prof",esc(p)); } preguntar(); };
+$("#repeatBtn").onclick=()=>{ if(S.actual) hablar(S.actual.q); };
+$("#endBtn").onclick=()=>{ if(S.esperando){ S.esperando=false; } terminar(); };
+$("#homeBtn").onclick=volver;
+$("#ans").addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); responder(false); } });
+$("#retryWeak").onclick=async()=>{
+  const debiles=[...new Set(S.log.filter(x=>x.pct<0.75).map(x=>x.q.id.replace(/-(re|ia)$/,"")))];
+  const qs=BANCO.filter(q=>debiles.includes(q.id));
+  if(!qs.length){ alertaSuave("¡No hay preguntas débiles! Pruebe el banco completo."); return; }
+  S.mode="custom"; S.cola=qs.map(q=>({...q,esRe:false})); S.idx=0; S.log=[];
+  $("#vInforme").classList.add("hidden"); $("#vExamen").classList.remove("hidden"); $("#chat").innerHTML="";
+  msg("prof","Volvamos a los temas donde tuvo dificultades."); await sleep(800); preguntar();
+};
+function alertaSuave(t){ const b=$("#retryWeak"); const o=b.textContent; b.textContent=t; setTimeout(()=>b.textContent=o,2500); }
+$("#copyBtn").onclick=()=>{
+  const t="Simulación de defensa – Fabiana Rodríguez Valdés\nNota: "+$("#nota").textContent+"\n\n"+S.log.map((x,i)=>`${i+1}. ${x.q.q}\n   Nota ${notaDe(x.pct).toFixed(1)} – Faltó: ${x.falt.join("; ")||"nada"}`).join("\n");
+  navigator.clipboard?.writeText(t).then(()=>{ $("#copyBtn").textContent="¡Copiado!"; setTimeout(()=>$("#copyBtn").textContent="Copiar informe",2000); });
+};
+$("#themeBtn").onclick=()=>{
+  const r=document.documentElement; const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark?"light":"dark"; store.set("cx_theme",r.dataset.theme);
+};
+(()=>{ const t=store.get("cx_theme",""); if(t) document.documentElement.dataset.theme=t; })();
+initInicio();
+</script>
+</body>
+</html>
