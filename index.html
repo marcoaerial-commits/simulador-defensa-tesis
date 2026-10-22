@@ -168,7 +168,6 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
           <option value="180">3 min</option>
         </select>
       </label>
-      <label><input type="checkbox" id="voz" checked> El profesor lee en voz alta</label>
       <label><input type="checkbox" id="repreg" checked> Repreguntas</label>
     </div>
 
@@ -199,13 +198,10 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
     <div class="composer" id="composer">
       <textarea id="ans" placeholder="Responda como lo haría ante la comisión…"></textarea>
       <div class="acts">
-        <button class="mic" id="micBtn" title="Responder hablando">🎤 Hablar</button>
-        <button class="ghost" id="repeatBtn" title="Escuchar de nuevo la pregunta">🔊 Repetir</button>
         <span class="sp"></span>
         <span class="hint hide-sm">Ctrl + Enter para enviar</span>
         <button class="primary" id="sendBtn">Responder</button>
       </div>
-      <div class="hint hidden" id="micHint"></div>
     </div>
     <div class="row hidden" id="nextRow" style="justify-content:flex-end;margin-top:10px">
       <button class="primary" id="nextBtn">Siguiente pregunta →</button>
@@ -621,114 +617,8 @@ function hint(){
 $("#repreg").onchange=hint;
 
 /* ===== Voz ===== */
-let vozES=null;
-function cargarVoces(){
-  const vs = speechSynthesis.getVoices();
-  vozES = vs.find(v=>/es[-_]CL/i.test(v.lang)) || vs.find(v=>/es[-_](419|MX|US|AR)/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
-}
-if("speechSynthesis" in window){ cargarVoces(); speechSynthesis.onvoiceschanged=cargarVoces; }
-/* ---- Voz del profesor ----
-   En celulares la síntesis de voz se traba si: se llama a speak() justo después de cancel(),
-   el texto es largo (Chrome corta a los ~15 s y bloquea lo que viene), o el micrófono sigue abierto.
-   Por eso se habla por frases cortas, con una pequeña pausa y nunca mientras se dicta. */
-let colaVoz=[], vozActual=null, vozTimer=null;
-function hablar(txt){
-  if(!$("#voz").checked || !("speechSynthesis" in window)) return;
-  callar();
-  if(grabando) return;                                  // no hablar encima del micrófono
-  colaVoz = (txt.match(/[^.!?¿¡;:]+[.!?;:]*|[¿¡][^?!]+[?!]/g) || [txt]).map(s=>s.trim()).filter(Boolean);
-  // si el micrófono se está cerrando, se espera un poco más para que el teléfono libere el audio
-  vozTimer=setTimeout(siguienteFrase, micVivo?600:(MOVIL?250:60));
-}
-function siguienteFrase(){
-  if(!colaVoz.length){ vozActual=null; return; }
-  const u=new SpeechSynthesisUtterance(colaVoz.shift());
-  u.lang = vozES?vozES.lang:"es-CL"; if(vozES) u.voice=vozES; u.rate=0.98;
-  u.onend=u.onerror=()=>{ if(vozActual===u) siguienteFrase(); };
-  vozActual=u;                                          // referencia viva: Chrome pierde el onend si se recolecta
-  try{ speechSynthesis.resume(); }catch(e){}
-  speechSynthesis.speak(u);
-}
-function callar(){
-  clearTimeout(vozTimer); colaVoz=[]; vozActual=null;
-  if("speechSynthesis" in window){ try{ speechSynthesis.cancel(); }catch(e){} }
-}
-/* ---- Dictado ----
-   Se escucha por tramos y se vuelve a empezar tras cada pausa. Cada reconocedor tiene su turno:
-   los eventos de uno viejo (de la pregunta anterior) se ignoran, y nunca hay dos abiertos a la vez. */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
-const MOVIL = IOS || /Android/i.test(navigator.userAgent);
-let rec=null, micVivo=false, grabando=false, acumulado="", sesion="", reintentos=0;
-if(!SR){ $("#micBtn").title="Este navegador no permite dictado: usa el micrófono del teclado"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
-function micUI(on, txt){ if(MOVIL) return; $("#micBtn").classList.toggle("on",on); $("#micBtn").textContent = txt || (on?"■ Detener":"🎤 Hablar"); }
-function aviso(t){ const h=$("#micHint"); h.textContent=t||""; h.classList.toggle("hidden",!t); }
-// soltar=true (al enviar o cambiar de pregunta) cierra el micrófono de inmediato
-function detenerMic(soltar){
-  grabando=false; micUI(false);
-  if(rec && micVivo){ try{ soltar ? rec.abort() : rec.stop(); }catch(e){ micVivo=false; } }
-}
-function arrancarRec(){
-  const r=new SR(); rec=r;
-  r.lang="es-CL"; r.interimResults=true; r.maxAlternatives=1;
-  r.continuous=!MOVIL;      // en celulares el modo continuo repite palabras o se cuelga
-  sesion="";
-  const deQ=S.actual;
-  r.onstart=()=>{ if(rec===r) micVivo=true; };
-  r.onresult=e=>{
-    if(rec!==r || deQ!==S.actual || !S.esperando) return;
-    reintentos=0;
-    let t=""; for(let i=0;i<e.results.length;i++) t += e.results[i][0].transcript+" ";
-    sesion=t.replace(/\s+/g," ").trim();
-    const a=$("#ans"); a.value=(acumulado+sesion).replace(/^\s+/,""); a.scrollTop=a.scrollHeight;
-  };
-  r.onerror=e=>{
-    if(rec!==r) return;
-    if(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture"){
-      grabando=false; micUI(false);
-      aviso("El navegador no dio permiso al micrófono. Revísalo en los ajustes del navegador, o usa el micrófono del teclado.");
-    } else if(e.error==="network"){
-      grabando=false; micUI(false);
-      aviso("El dictado necesita internet. Revisa la conexión o usa el micrófono del teclado.");
-    }
-  };
-  r.onend=()=>{
-    if(rec!==r) return;                                   // evento de un reconocedor viejo
-    micVivo=false;
-    if(sesion && deQ===S.actual){ acumulado += sesion+" "; }
-    sesion="";
-    if(!grabando || deQ!==S.actual){ micUI(false); return; }
-    if(++reintentos>40){ detenerMic(); return; }
-    setTimeout(()=>{ if(grabando && rec===r){ try{ arrancarRec(); }catch(e){ grabando=false; micUI(false); } } }, IOS?150:60);
-  };
-  micVivo=true;
-  r.start();
-}
-/* En celulares se usa el dictado del teclado (Gboard / teclado del iPhone): es el único que funciona
-   de forma confiable. El botón abre el teclado y explica dónde está el micrófono. */
-const AYUDA_TECLADO = IOS
-  ? "Toca el 🎤 del teclado (abajo a la derecha) y habla. Cuando termines, toca Responder."
-  : "Toca el 🎤 del teclado (arriba a la derecha) y habla. Cuando termines, toca Responder.";
-if(MOVIL){
-  $("#micBtn").disabled=false; $("#micBtn").style.opacity=1;
-  $("#micBtn").textContent="🎤 Dictar";
-  $("#ans").placeholder="Toque aquí y dicte con el micrófono del teclado, o escriba…";
-}
-$("#micBtn").onclick=()=>{
-  if(MOVIL){ callar(); const a=$("#ans"); a.focus(); try{ a.setSelectionRange(a.value.length,a.value.length); }catch(e){} aviso(AYUDA_TECLADO); return; }
-  if(!SR) return;
-  if(grabando){ detenerMic(false); return; }
-  callar();
-  acumulado=$("#ans").value.trim(); if(acumulado) acumulado+=" ";
-  grabando=true; reintentos=0; micUI(true); aviso("");
-  // si el micrófono anterior aún se está cerrando, se cierra a la fuerza y se espera un instante
-  const espera = (rec && micVivo) ? 350 : 0;
-  if(espera){ try{ rec.abort(); }catch(e){} rec=null; micVivo=false; }
-  setTimeout(()=>{ if(!grabando) return; try{ arrancarRec(); }catch(e){ grabando=false; micUI(false); aviso("No se pudo abrir el micrófono. Vuelve a tocar 🎤 Hablar."); } }, espera);
-};
-// si la persona corrige a mano mientras dicta, se respeta lo que escribió
-$("#ans").addEventListener("focus",()=>{ if(MOVIL) callar(); });
-$("#ans").addEventListener("input",()=>{ if(grabando){ acumulado=$("#ans").value+" "; sesion=""; } });
+/* Solo respuestas escritas: sin voz ni dictado */
+function hablar(){} function callar(){} function detenerMic(){}
 
 /* ===== Chat ===== */
 function msg(quien, html){
@@ -874,7 +764,6 @@ function volver(){ $("#vExamen").classList.add("hidden"); $("#vInforme").classLi
 $("#startBtn").onclick=comenzar;
 $("#sendBtn").onclick=()=>responder(false);
 $("#nextBtn").onclick=()=>{ detenerMic(true); $("#nextRow").classList.add("hidden"); const p=pick(F().puente); if(S.idx<S.cola.length && !S.cola[S.idx].esRe){ msg("prof",esc(p)); } preguntar(); };
-$("#repeatBtn").onclick=()=>{ if(S.actual) hablar(S.actual.q); };
 $("#endBtn").onclick=()=>{ detenerMic(true); if(S.esperando){ S.esperando=false; } terminar(); };
 $("#homeBtn").onclick=volver;
 $("#ans").addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); responder(false); } });

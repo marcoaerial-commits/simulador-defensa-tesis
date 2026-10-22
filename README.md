@@ -7,7 +7,7 @@ Un profesor de la comisión hace preguntas sobre cada lámina de la presentació
 ## Cómo usarla
 - Abrir la página publicada en GitHub Pages (o `index.html` directamente en el navegador).
 - Modalidades: **Defensa simulada** (8 preguntas, énfasis en láminas 9, 10, 11 y 14), **Por lámina** y **Banco completo**.
-- Se puede responder escribiendo o hablando (🎤, funciona en Chrome/Edge). El profesor puede leer las preguntas en voz alta.
+- Las respuestas se escriben en el cuadro de texto.
 - **Modo IA opcional**: con una clave de la API de Anthropic, el profesor comenta la respuesta y formula repreguntas propias usando Claude. La clave queda solo en el navegador.
 
 ## Editar preguntas
