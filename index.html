@@ -168,6 +168,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
           <option value="180">3 min</option>
         </select>
       </label>
+      <label><input type="checkbox" id="voz" checked> El profesor lee en voz alta</label>
       <label><input type="checkbox" id="repreg" checked> Repreguntas</label>
     </div>
 
@@ -198,6 +199,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
     <div class="composer" id="composer">
       <textarea id="ans" placeholder="Responda como lo haría ante la comisión…"></textarea>
       <div class="acts">
+        <button class="ghost" id="repeatBtn" title="Escuchar de nuevo la pregunta">🔊 Repetir</button>
         <span class="sp"></span>
         <span class="hint hide-sm">Ctrl + Enter para enviar</span>
         <button class="primary" id="sendBtn">Responder</button>
@@ -617,8 +619,46 @@ function hint(){
 $("#repreg").onchange=hint;
 
 /* ===== Voz ===== */
-/* Solo respuestas escritas: sin voz ni dictado */
-function hablar(){} function callar(){} function detenerMic(){}
+/* ===== Voz del profesor (solo lectura; las respuestas son escritas) =====
+   En celulares la voz se traba si el texto es largo (Chrome corta a los ~15 s y bloquea lo que sigue)
+   o si se habla justo después de cancelar. Por eso se lee por frases y con una pausa breve al interrumpir. */
+const MOVIL = /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+const TTS = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+let vozES=null, colaVoz=[], vozActual=null, vozTimer=null;
+function cargarVoces(){
+  const vs = speechSynthesis.getVoices();
+  vozES = vs.find(v=>/es[-_]CL/i.test(v.lang)) || vs.find(v=>/es[-_](419|US|MX|AR|CO)/i.test(v.lang)) || vs.find(v=>/^es/i.test(v.lang)) || null;
+}
+if(TTS){ cargarVoces(); speechSynthesis.onvoiceschanged=cargarVoces; }
+function vozOn(){ return TTS && $("#voz").checked; }
+// iPhone y Android solo permiten hablar si el primer sonido nace de un toque: se "desbloquea" al comenzar
+function desbloquearVoz(){
+  if(!vozOn()) return;
+  try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); }catch(e){}
+}
+function hablar(txt, encolar){
+  if(!vozOn() || !txt) return;
+  const frases = (txt.match(/[^.!?;:]+[.!?;:]*/g) || [txt]).map(x=>x.trim()).filter(Boolean);
+  if(encolar && vozActual){ colaVoz.push(...frases); return; }   // esperar a que termine lo que está diciendo
+  const ocupado = speechSynthesis.speaking || speechSynthesis.pending;
+  callar();
+  colaVoz = frases;
+  if(ocupado) vozTimer=setTimeout(siguienteFrase, MOVIL?250:80); else siguienteFrase();
+}
+function siguienteFrase(){
+  if(!colaVoz.length){ vozActual=null; return; }
+  const u=new SpeechSynthesisUtterance(colaVoz.shift());
+  u.lang = vozES?vozES.lang:"es-CL"; if(vozES) u.voice=vozES; u.rate=0.98;
+  u.onend=u.onerror=()=>{ if(vozActual===u) siguienteFrase(); };
+  vozActual=u;
+  try{ speechSynthesis.resume(); }catch(e){}
+  speechSynthesis.speak(u);
+}
+function callar(){
+  clearTimeout(vozTimer); colaVoz=[]; vozActual=null;
+  if(TTS){ try{ speechSynthesis.cancel(); }catch(e){} }
+}
+function detenerMic(){}
 
 /* ===== Chat ===== */
 function msg(quien, html){
@@ -651,7 +691,7 @@ function preguntar(){
   $("#prog").style.width = (100*(nPrin-1)/contarPrincipales())+"%";
   const tag = q.esRe ? "Repregunta" : `Lámina ${q.lam} · ${q.tema}`;
   msg("prof", `<div class="tag">${esc(tag)}</div><div class="q">${esc(q.q)}</div>`);
-  hablar(q.q);
+  hablar(q.q, S.idx===0);   // la primera pregunta espera a que termine el saludo
   $("#composer").classList.remove("hidden"); $("#nextRow").classList.add("hidden");
   $("#ans").value=""; $("#ans").focus();
   iniciarTimer();
@@ -761,7 +801,10 @@ function terminar(){
 }
 function volver(){ $("#vExamen").classList.add("hidden"); $("#vInforme").classList.add("hidden"); $("#vInicio").classList.remove("hidden"); detenerMic(true); callar(); }
 
-$("#startBtn").onclick=comenzar;
+$("#startBtn").onclick=()=>{ desbloquearVoz(); comenzar(); };
+$("#repeatBtn").onclick=()=>{ if(S.actual) hablar(S.actual.q); };
+if(!TTS) $("#repeatBtn").classList.add("hidden");
+$("#voz").onchange=()=>{ if(!$("#voz").checked) callar(); };
 $("#sendBtn").onclick=()=>responder(false);
 $("#nextBtn").onclick=()=>{ detenerMic(true); $("#nextRow").classList.add("hidden"); const p=pick(F().puente); if(S.idx<S.cola.length && !S.cola[S.idx].esRe){ msg("prof",esc(p)); } preguntar(); };
 $("#endBtn").onclick=()=>{ detenerMic(true); if(S.esperando){ S.esperando=false; } terminar(); };
