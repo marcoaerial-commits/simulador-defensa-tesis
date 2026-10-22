@@ -661,7 +661,7 @@ const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform=
 const MOVIL = IOS || /Android/i.test(navigator.userAgent);
 let rec=null, micVivo=false, grabando=false, acumulado="", sesion="", reintentos=0;
 if(!SR){ $("#micBtn").title="Este navegador no permite dictado: usa el micrófono del teclado"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
-function micUI(on, txt){ $("#micBtn").classList.toggle("on",on); $("#micBtn").textContent = txt || (on?"■ Detener":"🎤 Hablar"); }
+function micUI(on, txt){ if(MOVIL) return; $("#micBtn").classList.toggle("on",on); $("#micBtn").textContent = txt || (on?"■ Detener":"🎤 Hablar"); }
 function aviso(t){ const h=$("#micHint"); h.textContent=t||""; h.classList.toggle("hidden",!t); }
 // soltar=true (al enviar o cambiar de pregunta) cierra el micrófono de inmediato
 function detenerMic(soltar){
@@ -704,7 +704,18 @@ function arrancarRec(){
   micVivo=true;
   r.start();
 }
+/* En celulares se usa el dictado del teclado (Gboard / teclado del iPhone): es el único que funciona
+   de forma confiable. El botón abre el teclado y explica dónde está el micrófono. */
+const AYUDA_TECLADO = IOS
+  ? "Toca el 🎤 del teclado (abajo a la derecha) y habla. Cuando termines, toca Responder."
+  : "Toca el 🎤 del teclado (arriba a la derecha) y habla. Cuando termines, toca Responder.";
+if(MOVIL){
+  $("#micBtn").disabled=false; $("#micBtn").style.opacity=1;
+  $("#micBtn").textContent="🎤 Dictar";
+  $("#ans").placeholder="Toque aquí y dicte con el micrófono del teclado, o escriba…";
+}
 $("#micBtn").onclick=()=>{
+  if(MOVIL){ callar(); const a=$("#ans"); a.focus(); try{ a.setSelectionRange(a.value.length,a.value.length); }catch(e){} aviso(AYUDA_TECLADO); return; }
   if(!SR) return;
   if(grabando){ detenerMic(false); return; }
   callar();
@@ -716,6 +727,7 @@ $("#micBtn").onclick=()=>{
   setTimeout(()=>{ if(!grabando) return; try{ arrancarRec(); }catch(e){ grabando=false; micUI(false); aviso("No se pudo abrir el micrófono. Vuelve a tocar 🎤 Hablar."); } }, espera);
 };
 // si la persona corrige a mano mientras dicta, se respeta lo que escribió
+$("#ans").addEventListener("focus",()=>{ if(MOVIL) callar(); });
 $("#ans").addEventListener("input",()=>{ if(grabando){ acumulado=$("#ans").value+" "; sesion=""; } });
 
 /* ===== Chat ===== */
