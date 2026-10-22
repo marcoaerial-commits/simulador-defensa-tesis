@@ -205,6 +205,7 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
         <span class="hint hide-sm">Ctrl + Enter para enviar</span>
         <button class="primary" id="sendBtn">Responder</button>
       </div>
+      <div class="hint hidden" id="micHint"></div>
     </div>
     <div class="row hidden" id="nextRow" style="justify-content:flex-end;margin-top:10px">
       <button class="primary" id="nextBtn">Siguiente pregunta →</button>
@@ -539,7 +540,7 @@ const FRASES = {
     alto:["Excelente respuesta, muy completa.","Muy bien, eso es exactamente lo que esperaba escuchar."],
     medio:["Va por buen camino, pero le faltó desarrollar algunos elementos.","Bien, aunque podría ser más precisa."],
     bajo:["Tranquila, revisemos esto juntos.","Le faltaron varios elementos importantes; repasemos."],
-    tiempo:"Se nos acabó el tiempo para esta pregunta, pero veamos lo que alcanzó a decir.",
+    tiempo:"Se cumplió el tiempo, Fabiana. Termine la idea con calma y envíe su respuesta.",
     cierre:"Muchas gracias, Fabiana. La comisión deliberará."
   },
   neutral:{
@@ -548,7 +549,7 @@ const FRASES = {
     alto:["Correcto, respuesta completa.","Bien fundamentado."],
     medio:["Parcialmente correcto.","Su respuesta es incompleta en algunos aspectos."],
     bajo:["La respuesta no aborda los elementos centrales.","Esperaba una respuesta más precisa."],
-    tiempo:"Tiempo. Evaluaremos lo que alcanzó a responder.",
+    tiempo:"Se cumplió el tiempo. Le pido que vaya cerrando su respuesta.",
     cierre:"Muchas gracias. La comisión deliberará y le comunicará su calificación."
   },
   exigente:{
@@ -557,7 +558,7 @@ const FRASES = {
     alto:["Aceptable. Es lo que se espera de una tesista.","Correcto. Bien defendido."],
     medio:["Insuficiente para una defensa de tesis; faltan elementos.","Eso es una respuesta a medias."],
     bajo:["No. Eso no responde la pregunta.","Esa respuesta preocupa a la comisión: es su propio trabajo."],
-    tiempo:"Se acabó el tiempo. En una defensa real, la comisión no espera.",
+    tiempo:"Se acabó su tiempo. En una defensa real la comisión ya la estaría interrumpiendo: concluya.",
     cierre:"Gracias. La comisión deliberará."
   }
 };
@@ -632,20 +633,51 @@ function hablar(txt){
   const u=new SpeechSynthesisUtterance(txt); u.lang = vozES?vozES.lang:"es-CL"; if(vozES) u.voice=vozES; u.rate=0.98;
   speechSynthesis.speak(u);
 }
+/* Dictado: se reinicia solo tras cada pausa (iPhone corta la escucha al primer silencio)
+   y acumula el texto hasta que la persona presiona "Detener" o envía. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec=null, grabando=false, baseTxt="";
-if(!SR){ $("#micBtn").title="Tu navegador no permite dictado (usa Chrome o Edge)"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+let rec=null, grabando=false, acumulado="", reintentos=0;
+if(!SR){ $("#micBtn").title="Tu navegador no permite dictado: usa el micrófono del teclado"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
+function micUI(on, txt){ $("#micBtn").classList.toggle("on",on); $("#micBtn").textContent = txt || (on?"■ Detener":"🎤 Hablar"); }
+function detenerMic(){ if(!grabando) return; grabando=false; try{ rec && rec.stop(); }catch(e){} micUI(false); }
+function arrancarRec(){
+  rec=new SR(); rec.lang="es-CL"; rec.interimResults=true; rec.maxAlternatives=1;
+  rec.continuous=!IOS;               // en iPhone el modo continuo duplica y se cuelga
+  rec.onresult=e=>{
+    reintentos=0; let tmp="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t=e.results[i][0].transcript;
+      if(e.results[i].isFinal) acumulado += t.trim()+" "; else tmp += t;
+    }
+    const a=$("#ans"); a.value=(acumulado+tmp).replace(/^\s+/,""); a.scrollTop=a.scrollHeight;
+  };
+  rec.onerror=e=>{
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture"){
+      grabando=false; micUI(false);
+      $("#micHint").textContent="El navegador no dio permiso al micrófono. Revísalo en Ajustes, o usa el micrófono del teclado.";
+      $("#micHint").classList.remove("hidden");
+    }
+  };
+  rec.onend=()=>{
+    if(!grabando){ micUI(false); return; }
+    // se cortó por silencio: volver a escuchar sin perder lo dicho
+    if(++reintentos>40){ detenerMic(); return; }
+    setTimeout(()=>{ if(grabando){ try{ arrancarRec(); }catch(e){ detenerMic(); } } }, IOS?150:50);
+  };
+  rec.start();
+}
 $("#micBtn").onclick=()=>{
   if(!SR) return;
-  if(grabando){ rec.stop(); return; }
+  if(grabando){ detenerMic(); return; }
   if("speechSynthesis" in window) speechSynthesis.cancel();
-  rec=new SR(); rec.lang="es-CL"; rec.continuous=true; rec.interimResults=true;
-  baseTxt=$("#ans").value.trim(); if(baseTxt) baseTxt+=" ";
-  rec.onresult=e=>{ let fin="",tmp=""; for(let i=0;i<e.results.length;i++){ const t=e.results[i][0].transcript; e.results[i].isFinal?fin+=t+" ":tmp+=t; } $("#ans").value=baseTxt+fin+tmp; };
-  rec.onend=()=>{ grabando=false; $("#micBtn").classList.remove("on"); $("#micBtn").textContent="🎤 Hablar"; };
-  rec.onerror=()=>{};
-  rec.start(); grabando=true; $("#micBtn").classList.add("on"); $("#micBtn").textContent="■ Detener";
+  acumulado=$("#ans").value.trim(); if(acumulado) acumulado+=" ";
+  grabando=true; reintentos=0; micUI(true);
+  $("#micHint").classList.add("hidden");
+  try{ arrancarRec(); }catch(e){ detenerMic(); }
 };
+// si la persona corrige a mano mientras dicta, se respeta lo que escribió
+$("#ans").addEventListener("input",()=>{ if(grabando) acumulado=$("#ans").value+" "; });
 
 /* ===== Chat ===== */
 function msg(quien, html){
@@ -687,10 +719,15 @@ function iniciarTimer(){
   clearInterval(S.timerId);
   const t=+$("#tiempo").value; const el=$("#timer");
   if(!t){ el.classList.add("hidden"); return; }
-  S.restante=t; el.classList.remove("hidden","low");
-  const pinta=()=>{ el.textContent=Math.floor(S.restante/60)+":"+String(S.restante%60).padStart(2,"0"); el.classList.toggle("low",S.restante<=15); };
+  S.restante=t; S.excedido=false; el.classList.remove("hidden","low");
+  const fmt=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+  const pinta=()=>{ el.textContent = S.restante>=0 ? fmt(S.restante) : "+"+fmt(-S.restante); el.classList.toggle("low",S.restante<=15); };
   pinta();
-  S.timerId=setInterval(()=>{ S.restante--; pinta(); if(S.restante<=0){ clearInterval(S.timerId); responder(true); } },1000);
+  // Al acabarse el tiempo NO se envía la respuesta: el profesor avisa y el reloj sigue en tiempo extra
+  S.timerId=setInterval(()=>{
+    S.restante--; pinta();
+    if(S.restante===0 && S.esperando){ S.excedido=true; msg("prof", esc(F().tiempo)); }
+  },1000);
 }
 
 async function responder(porTiempo=false){
@@ -698,10 +735,9 @@ async function responder(porTiempo=false){
   const txt=$("#ans").value.trim();
   if(!txt && !porTiempo) { $("#ans").focus(); return; }
   S.esperando=false; clearInterval(S.timerId);
-  if(grabando && rec) rec.stop();
+  detenerMic();
   $("#composer").classList.add("hidden");
   msg("me", txt?esc(txt):"<i>(sin respuesta)</i>");
-  if(porTiempo){ msg("prof", esc(F().tiempo)); }
   const q=S.actual;
   const t=escribiendo();
   let ev = evaluarLocal(txt,q.puntos), comentario=null, reIA=null, viaIA=false;
@@ -722,7 +758,7 @@ async function responder(porTiempo=false){
     <details class="model"><summary>Ver respuesta sugerida</summary><div>${esc(q.modelo)}</div></details>
     ${viaIA?'<div class="hint" style="margin-top:6px">Evaluado con IA</div>':''}`);
   hablar(frase);
-  S.log.push({q, txt, pct:ev.pct, nota, falt:ev.res.filter(x=>!x.ok).map(x=>x.t)});
+  S.log.push({q, txt, pct:ev.pct, nota, excedido:!!S.excedido, falt:ev.res.filter(x=>!x.ok).map(x=>x.t)});
 
   // Repregunta: la pauta trae una, o la IA propone una si la respuesta fue débil
   if($("#repreg").checked && !q.esRe){
@@ -764,7 +800,7 @@ Devuelve este JSON:
 
 /* ===== Informe ===== */
 function terminar(){
-  clearInterval(S.timerId); if("speechSynthesis" in window) speechSynthesis.cancel();
+  clearInterval(S.timerId); detenerMic(); if("speechSynthesis" in window) speechSynthesis.cancel();
   if(!S.log.length){ volver(); return; }
   hablar(F().cierre);
   $("#vExamen").classList.add("hidden"); $("#vInforme").classList.remove("hidden");
@@ -779,14 +815,14 @@ function terminar(){
   const temas={}; S.log.forEach(x=>{ (temas[x.q.tema]=temas[x.q.tema]||[]).push(x.pct); });
   $("#topics").innerHTML = Object.entries(temas).map(([t,a])=>{ const p=a.reduce((x,y)=>x+y,0)/a.length;
     return `<div class="topic"><b style="color:${colorDe(p)}">${Math.round(p*100)} %</b>${esc(t)}</div>`; }).join("");
-  $("#tbody").innerHTML = S.log.map((x,i)=>`<tr><td>${i+1}</td><td>${x.q.esRe?'<span class="tag">Repregunta</span><br>':''}${esc(x.q.q)}${x.falt.length?`<div class="hint" style="margin-top:4px">Faltó: ${esc(x.falt.join(" · "))}</div>`:""}</td>
+  $("#tbody").innerHTML = S.log.map((x,i)=>`<tr><td>${i+1}</td><td>${x.q.esRe?'<span class="tag">Repregunta</span><br>':''}${esc(x.q.q)}${x.excedido?'<div class="hint" style="color:var(--bad)">Se pasó del tiempo</div>':""}${x.falt.length?`<div class="hint" style="margin-top:4px">Faltó: ${esc(x.falt.join(" · "))}</div>`:""}</td>
     <td style="white-space:nowrap"><b>${notaDe(x.pct).toFixed(1).replace(".",",")}</b><div class="meter"><i style="width:${x.pct*100}%;background:${colorDe(x.pct)}"></i></div></td></tr>`).join("");
 }
 function volver(){ $("#vExamen").classList.add("hidden"); $("#vInforme").classList.add("hidden"); $("#vInicio").classList.remove("hidden"); if("speechSynthesis" in window) speechSynthesis.cancel(); }
 
 $("#startBtn").onclick=comenzar;
 $("#sendBtn").onclick=()=>responder(false);
-$("#nextBtn").onclick=()=>{ $("#nextRow").classList.add("hidden"); const p=pick(F().puente); if(S.idx<S.cola.length && !S.cola[S.idx].esRe){ msg("prof",esc(p)); } preguntar(); };
+$("#nextBtn").onclick=()=>{ detenerMic(); $("#nextRow").classList.add("hidden"); const p=pick(F().puente); if(S.idx<S.cola.length && !S.cola[S.idx].esRe){ msg("prof",esc(p)); } preguntar(); };
 $("#repeatBtn").onclick=()=>{ if(S.actual) hablar(S.actual.q); };
 $("#endBtn").onclick=()=>{ if(S.esperando){ S.esperando=false; } terminar(); };
 $("#homeBtn").onclick=volver;
