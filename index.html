@@ -637,20 +637,25 @@ function hablar(txt){
    y acumula el texto hasta que la persona presiona "Detener" o envía. */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
-let rec=null, grabando=false, acumulado="", reintentos=0;
-if(!SR){ $("#micBtn").title="Tu navegador no permite dictado: usa el micrófono del teclado"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
+const MOVIL = IOS || /Android/i.test(navigator.userAgent);
+let rec=null, grabando=false, acumulado="", sesion="", reintentos=0;
+if(!SR){ $("#micBtn").title="Este navegador no permite dictado: usa el micrófono del teclado"; $("#micBtn").disabled=true; $("#micBtn").style.opacity=.4; }
 function micUI(on, txt){ $("#micBtn").classList.toggle("on",on); $("#micBtn").textContent = txt || (on?"■ Detener":"🎤 Hablar"); }
 function detenerMic(){ if(!grabando) return; grabando=false; try{ rec && rec.stop(); }catch(e){} micUI(false); }
 function arrancarRec(){
   rec=new SR(); rec.lang="es-CL"; rec.interimResults=true; rec.maxAlternatives=1;
-  rec.continuous=!IOS;               // en iPhone el modo continuo duplica y se cuelga
+  // En celulares (iPhone y Android) el modo continuo repite palabras o se cuelga:
+  // se escucha por tramos cortos y se vuelve a empezar tras cada pausa.
+  rec.continuous=!MOVIL;
+  sesion="";
+  const deQ=S.actual;
   rec.onresult=e=>{
-    reintentos=0; let tmp="";
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) acumulado += t.trim()+" "; else tmp += t;
-    }
-    const a=$("#ans"); a.value=(acumulado+tmp).replace(/^\s+/,""); a.scrollTop=a.scrollHeight;
+    if(deQ!==S.actual || !S.esperando) return;   // resultado tardío de una pregunta ya enviada
+    reintentos=0;
+    // se reconstruye el texto completo del tramo (no se suma), así un resultado repetido no duplica palabras
+    let t=""; for(let i=0;i<e.results.length;i++) t += e.results[i][0].transcript+" ";
+    sesion=t.replace(/\s+/g," ").trim();
+    const a=$("#ans"); a.value=(acumulado+sesion).replace(/^\s+/,""); a.scrollTop=a.scrollHeight;
   };
   rec.onerror=e=>{
     if(e.error==="not-allowed"||e.error==="service-not-allowed"||e.error==="audio-capture"){
@@ -660,6 +665,7 @@ function arrancarRec(){
     }
   };
   rec.onend=()=>{
+    if(sesion){ acumulado += sesion+" "; sesion=""; }
     if(!grabando){ micUI(false); return; }
     // se cortó por silencio: volver a escuchar sin perder lo dicho
     if(++reintentos>40){ detenerMic(); return; }
@@ -677,7 +683,7 @@ $("#micBtn").onclick=()=>{
   try{ arrancarRec(); }catch(e){ detenerMic(); }
 };
 // si la persona corrige a mano mientras dicta, se respeta lo que escribió
-$("#ans").addEventListener("input",()=>{ if(grabando) acumulado=$("#ans").value+" "; });
+$("#ans").addEventListener("input",()=>{ if(grabando){ acumulado=$("#ans").value+" "; sesion=""; } });
 
 /* ===== Chat ===== */
 function msg(quien, html){
